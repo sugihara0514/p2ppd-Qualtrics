@@ -41,7 +41,7 @@ export async function enterFlow(APP_ID, useToken=true) {
   }
 
   // 3) Agora join（トークン有りに統一）
-  const uid = 0;
+  const uid = Math.floor(Math.random() * 1e9); //ランダム整数;
   const { token } = await getToken(channel, uid);
   await rtc.join(channel, token, uid);
   console.log("[RTC] joined", { channel, uid });
