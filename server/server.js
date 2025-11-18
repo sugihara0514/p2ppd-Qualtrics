@@ -1,0 +1,191 @@
+// server/server.js
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { v4 as uuid } from "uuid";
+import pkg from "agora-access-token";
+const { RtcTokenBuilder, RtcRole } = pkg;
+
+// QualtricsのURLを許可する
+const allowedOrigin = "https://survey.syd1.qualtrics.com/jfe/form/SV_af215xg8ZAPejZ4";
+
+const corsOptions = {
+  origin: allowedOrigin,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,
+  optionsSuccessStatus: 204, // プリフライトに 204 を返す
+};
+
+dotenv.config();
+const app = express();
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+app.use(express.json());
+
+const APP_ID = process.env.AGORA_APP_ID;
+const CERT   = process.env.AGORA_APP_CERT;
+const TTL    = Number(process.env.TOKEN_TTL_SEC || 3600);
+
+// --- 待機と部屋管理 ---
+const queue = []; // [{id, at}]
+const rooms = new Map(); // channel -> { users:[id1,id2] }
+const userToChannel = new Map(); // userId -> channel
+
+// 60秒以上の古い待機は除去
+const now = Date.now();
+while (queue.length && now - queue[0].at > 60_000) queue.shift();
+
+app.post("/join", (req, res) => {
+  const userId = uuid();
+  queue.push({ id: userId, at: Date.now() });
+
+  if (queue.length >= 2) {
+    const a = queue.shift().id;
+    const b = queue.shift().id;
+    const channel = `room-${uuid()}`;
+
+    rooms.set(channel, { users: [a, b] });
+
+    // 逆引きを登録
+    userToChannel.set(a, channel);
+    userToChannel.set(b, channel);
+
+    return res.json({ status: "paired", channel });
+  }
+  return res.json({ status: "waiting", userId });
+});
+
+app.get("/match", (req, res) => {
+  const userId = String(req.query.userId || "");
+  const channel = userToChannel.get(userId);
+
+  if (channel) {
+    return res.json({ status: "paired", channel });
+  }
+  return res.json({ status: "waiting" });
+});
+
+// --- Agora Token（本番用） ---
+app.get("/rtc/token", (req, res) => {
+  const channel = (req.query.channel || "").trim();
+  const uid     = Number(req.query.uid ?? 0);
+  if (!channel) return res.status(400).json({ error: "channel required" });
+
+  const role = RtcRole.PUBLISHER;
+  const expire = Math.floor(Date.now()/1000) + TTL;
+  const token = RtcTokenBuilder.buildTokenWithUid(APP_ID, CERT, channel, uid, role, expire);
+  res.json({ appId: APP_ID, channel, uid, token, expire });
+});
+
+app.get("/", (req, res) => res.send("pd-api ok"));
+app.get("/healthz", (req, res) => res.json({ ok: true }));
+
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`API on :${PORT}`));
+
+// --- 囚人のジレンマ ---
+const PAYOFF = { CC:[3,3], CD:[0,5], DC:[5,0], DD:[1,1] };
+const games = new Map();
+
+// ゲーム参加（channel と client側で作った playerId を紐づけ）
+app.post("/game/join", (req, res) => {
+  const { channel, playerId } = req.body || {};
+  if (!channel || !playerId) return res.status(400).json({ error: "channel and playerId required" });
+
+  if (!games.has(channel)) {
+    games.set(channel, {
+      round: 1, players: new Set(), choices: new Map(), totals: new Map(),
+      lastResult: null, over: false
+    });
+  }
+  const g = games.get(channel);
+  g.players.add(String(playerId));
+  if (!g.totals.has(String(playerId))) g.totals.set(String(playerId), 0);
+
+  return res.json({
+    ok: true,
+    round: g.round,
+    players: Array.from(g.players),
+    totals: Object.fromEntries(g.totals.entries()),
+    over: g.over,
+    lastResult: g.lastResult
+  });
+});
+
+// 選択をサーバに送信
+app.post("/game/choice", (req, res) => {
+  const { channel, playerId, round, choice } = req.body || {};
+  if (!channel || !playerId || !choice) {
+    return res.status(400).json({
+      error: "missing_fields",
+      need: ["channel","playerId","round","choice"],
+      got: req.body
+    });
+  }
+  const g = games.get(channel);
+  if (!g) return res.status(400).json({ error: "game_not_found", channel });
+  if (g.over) return res.status(400).json({ error: "game_over" });
+  if (!["C","D"].includes(choice)) return res.status(400).json({ error: "invalid_choice", choice });
+
+  // ラウンド厳密一致にこだわらず、サーバ側の現在ラウンドを採用
+  const rNow = g.round;
+  if (Number(round) !== rNow) {
+    // 参考情報として返すだけで、処理は続行
+    console.warn("[CHOICE] round mismatch: client=", round, "server=", rNow);
+  }
+
+  // プレイヤー登録漏れ対策：/game/join を呼んでいなくても一応登録
+  g.players.add(String(playerId));
+  if (!g.totals.has(String(playerId))) g.totals.set(String(playerId), 0);
+
+  // 記録
+  g.choices.set(String(playerId), choice);
+
+  // 2人そろったら判定
+  if (g.choices.size >= 2 && g.players.size >= 2) {
+    const [p1, p2] = Array.from(g.players);
+    const c1 = g.choices.get(p1) ?? "C";
+    const c2 = g.choices.get(p2) ?? "C";
+    const key = c1 + c2;
+    const [pay1, pay2] = PAYOFF[key];
+
+    g.totals.set(p1, (g.totals.get(p1) || 0) + pay1);
+    g.totals.set(p2, (g.totals.get(p2) || 0) + pay2);
+
+    g.lastResult = {
+      round: rNow,
+      choices: { [p1]: c1, [p2]: c2 },
+      payoffs: { [p1]: pay1, [p2]: pay2 },
+      totals: Object.fromEntries(g.totals.entries())
+    };
+    g.choices.clear();
+
+    if (rNow >= 10) {
+      g.over = true;
+    } else {
+      g.round = rNow + 1;
+    }
+  }
+
+  return res.json({ ok: true, serverRound: g.round });
+});
+
+
+// クライアントが状態をポーリングで取得
+app.get("/game/state", (req, res) => {
+  const channel = String(req.query.channel || "");
+  const playerId = String(req.query.playerId || "");
+  const g = games.get(channel);
+  if (!g) return res.json({ exists: false });
+
+  const myTotal = g.totals.get(playerId) || 0;
+  return res.json({
+    exists: true,
+    round: g.round,
+    over: g.over,
+    lastResult: g.lastResult, // 直近の確定結果（null のこともある）
+    myTotal
+  });
+});
