@@ -1,5 +1,6 @@
+// api.js
+// renderのリンク
 export const API_BASE = "https://p2ppd-agora-api.onrender.com"; 
-// ↑renderのリンク
 
 export async function joinQueue() {
   const r = await fetch(`${API_BASE}/join`, { method: "POST" });

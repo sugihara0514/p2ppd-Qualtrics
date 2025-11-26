@@ -1,3 +1,4 @@
+// rtc.js
 export function createRtc(APP_ID) {
   const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
   let micTrack = null, camTrack = null, joined = false;

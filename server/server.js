@@ -7,7 +7,7 @@ import pkg from "agora-access-token";
 const { RtcTokenBuilder, RtcRole } = pkg;
 
 // QualtricsのURLを許可する
-const allowedOrigin = "https://survey.syd1.qualtrics.com/jfe/form/SV_af215xg8ZAPejZ4";
+const allowedOrigin = "https://survey.syd1.qualtrics.com";
 
 const corsOptions = {
   origin: allowedOrigin,
@@ -38,22 +38,24 @@ while (queue.length && now - queue[0].at > 60_000) queue.shift();
 
 app.post("/join", (req, res) => {
   const userId = uuid();
-  queue.push({ id: userId, at: Date.now() });
 
-  if (queue.length >= 2) {
-    const a = queue.shift().id;
-    const b = queue.shift().id;
+  // 古い待機者を掃除（任意）
+  while (queue.length && Date.now() - queue[0].at > 60_000) queue.shift();
+
+  const waiting = queue.shift(); // 誰か待機している？
+  if (waiting) {
+    const a = waiting.id;
+    const b = userId;
     const channel = `room-${uuid()}`;
-
     rooms.set(channel, { users: [a, b] });
-
-    // 逆引きを登録
     userToChannel.set(a, channel);
     userToChannel.set(b, channel);
-
-    return res.json({ status: "paired", channel });
+    return res.json({ status: "paired", channel, userId });
   }
-  return res.json({ status: "waiting", userId });
+
+  // 誰もいなければ自分を待機に
+  queue.push({ id: userId, at: Date.now() });
+  res.json({ status: "waiting", userId });
 });
 
 app.get("/match", (req, res) => {
