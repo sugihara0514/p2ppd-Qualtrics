@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>PD Agora Test</title>
+</head>
+<body>
+  <h1>PD Agora Test (Static Site)</h1>
+
+  <div id="pd-app">
+    <div id="video">
+      <div id="localContainer" style="width:240px;height:180px;background:#000;color:#fff;">Local</div>
+      <div id="remoteContainer" style="width:240px;height:180px;background:#000;color:#fff;">Remote</div>
+    </div>
+    <div id="gameUI" style="display:none;">
+      <div id="gameStatus">準備中…</div>
+      <button id="btnC" disabled>協調 (C)</button>
+      <button id="btnD" disabled>背信 (D)</button>
+    </div>
+  </div>
+
+  <script>
+    // ローカルテスト用：ここでは直接 APP_ID をセット
+    window.AGORA_APP_ID = "9ad174fb1e91454b975b49787fa459d4";
+  </script>
+  <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.0.js"></script>
+  <script type="module" src="./match.js"></script>
+</body>
+</html>
