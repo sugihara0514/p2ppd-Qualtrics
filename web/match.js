@@ -1,4 +1,6 @@
 // match.js
+console.log("[MATCH] match.js loaded");
+
 import { joinQueue, pollMatch, getToken } from "./api.js";
 import { createRtc } from "./rtc.js";
 import { startGame } from "./game.js";
@@ -6,7 +8,8 @@ import { startGame } from "./game.js";
 let matching = false;       // 二重起動防止
 let matchTimer = null;      // setInterval のハンドル
 
-export async function enterFlow(APP_ID, useToken=true) {
+export async function enterFlow(APP_ID, useToken = true) {
+  console.log("[MATCH] enterFlow called with APP_ID=", APP_ID);
   if (matching) return;
   matching = true;
 
@@ -22,7 +25,7 @@ export async function enterFlow(APP_ID, useToken=true) {
     const userId = reg.userId;
     console.log("[MATCH] waiting. userId=", userId);
 
-    // 2) /match を 1本だけ回す
+    // 2) /match をポーリング
     await new Promise((resolve) => {
       matchTimer = setInterval(async () => {
         try {
@@ -61,17 +64,20 @@ export async function enterFlow(APP_ID, useToken=true) {
   startGame(channel);
   matching = false;
 
-  // ページ離脱時にleaveできるようにフック（Qualtrics側のonUnloadから呼ぶ用）
+  // ページ離脱時にleaveできるようにフック
   window.__PD_LEAVE__ = rtc.leave;
+}
 
-  // Qualtrics側で window.AGORA_APP_ID にIDを入れておく想定。
-  // 無ければデフォルト値を使う。
-  const DEFAULT_APP_ID = "YOUR_AGORA_APP_ID"; // ←仮でハードコードでもOK
-  const appIdFromWindow =
-    (typeof window !== "undefined" && window.AGORA_APP_ID) || DEFAULT_APP_ID;
+// ===== 自動起動ブロック（ここが重要）=====
 
-  // 自動起動を止めたい場合は window.__PD_DISABLE_AUTO_START__ = true を先に立てる
-  if (typeof window !== "undefined" && !window.__PD_DISABLE_AUTO_START__) {
-    enterFlow(appIdFromWindow);
-  }
+// Qualtrics側で window.AGORA_APP_ID にIDを入れておく想定。
+// index.html テストでは index.html 内の <script> でセットする。
+const DEFAULT_APP_ID = "YOUR_AGORA_APP_ID"; // テスト用、あとで実IDに置き換え or window側だけで設定でもOK
+const appIdFromWindow =
+  (typeof window !== "undefined" && window.AGORA_APP_ID) || DEFAULT_APP_ID;
+
+// 自動起動を止めたい場合は window.__PD_DISABLE_AUTO_START__ = true を先に立てる
+if (typeof window !== "undefined" && !window.__PD_DISABLE_AUTO_START__) {
+  console.log("[MATCH] auto-start enterFlow with", appIdFromWindow);
+  enterFlow(appIdFromWindow);
 }
