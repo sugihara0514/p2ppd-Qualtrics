@@ -6,7 +6,7 @@ export function startGame(channel) {
   const btnC = document.getElementById("btnC");
   const btnD = document.getElementById("btnD");
 
-  const API_BASE = "https://p2ppd-agora-api.onrender.com"; // APIのURL
+  const API_BASE = "https://p2ppd-qualtrics.onrender.com"; // APIのURL
   // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
   let pid =
     (window.__PD__ && window.__PD__.responseId) ||
