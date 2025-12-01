@@ -41,6 +41,13 @@ function agoraAuthHeader() {
   return `Basic ${base}`;
 }
 
+// channel を fileNamePrefix 用に安全な形（英数字のみ）にする
+function safePrefixSegment(channel) {
+  const cleaned = String(channel).replace(/[^a-zA-Z0-9]/g, "");
+  // もし全部消えて空になったら保険で "room" にする
+  return cleaned || "room";
+}
+
 // 保存先ストレージ設定（Supabase Storage を S3互換で使う想定）
 function buildStorageConfig(channel) {
   const vendor = Number(process.env.AGORA_STORAGE_VENDOR || 11); // 11 = S3互換
@@ -50,6 +57,8 @@ function buildStorageConfig(channel) {
   const secretKey = process.env.AGORA_STORAGE_SECRET_KEY;
   const endpoint  = process.env.AGORA_STORAGE_ENDPOINT; // Supabase の S3 endpoint
 
+  const safeSegment = safePrefixSegment(channel);
+  
   const cfg = {
     vendor,
     region,
