@@ -179,6 +179,8 @@ async function stopCloudRecording(channel) {
     const info = recordings.get(channel);
     if (!info) return;
 
+    recordings.delete(channel);
+
     const { resourceId, sid, uid } = info;
     const stopResp = await fetch(
       `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/stop`,
@@ -201,7 +203,6 @@ async function stopCloudRecording(channel) {
     } else {
       console.log("[recording] stopped", channel, stopData);
     }
-    recordings.delete(channel);
   } catch (err) {
     console.error("[recording] stop error", err);
   }
