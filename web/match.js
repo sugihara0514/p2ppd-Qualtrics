@@ -68,7 +68,7 @@ export async function enterFlow(APP_ID, useToken = true) {
   window.__PD_LEAVE__ = rtc.leave;
 }
 
-// ===== 自動起動ブロック（ここが重要）=====
+// ===== 自動起動ブロック =====
 
 // Qualtrics側で window.AGORA_APP_ID にIDを入れておく想定。
 // index.html テストでは index.html 内の <script> でセットする。
