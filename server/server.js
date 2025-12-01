@@ -29,6 +29,175 @@ const APP_ID = process.env.AGORA_APP_ID;
 const CERT   = process.env.AGORA_APP_CERT;
 const TTL    = Number(process.env.TOKEN_TTL_SEC || 3600);
 
+// ===== Cloud Recording  =====
+const AGORA_CUSTOMER_ID     = process.env.AGORA_CUSTOMER_ID;
+const AGORA_CUSTOMER_SECRET = process.env.AGORA_CUSTOMER_SECRET;
+
+// Basic 認証ヘッダ作成
+function agoraAuthHeader() {
+  const base = Buffer.from(
+    `${AGORA_CUSTOMER_ID}:${AGORA_CUSTOMER_SECRET}`
+  ).toString("base64");
+  return `Basic ${base}`;
+}
+
+// 保存先ストレージ設定（Supabase Storage を S3互換で使う想定）
+function buildStorageConfig(channel) {
+  const vendor = Number(process.env.AGORA_STORAGE_VENDOR || 11); // 11 = S3互換
+  const region = Number(process.env.AGORA_STORAGE_REGION || 10); // 例: AP_NORTHEAST_1 相当
+  const bucket = process.env.AGORA_STORAGE_BUCKET;
+  const accessKey = process.env.AGORA_STORAGE_ACCESS_KEY;
+  const secretKey = process.env.AGORA_STORAGE_SECRET_KEY;
+  const endpoint  = process.env.AGORA_STORAGE_ENDPOINT; // Supabase の S3 endpoint
+
+  const cfg = {
+    vendor,
+    region,
+    bucket,
+    accessKey,
+    secretKey,
+    // バケット内のパス: pd/<channel>/...
+    fileNamePrefix: ["pd", channel],
+  };
+  if (endpoint) {
+    cfg.extensionParams = { endpoint };
+  }
+  return cfg;
+}
+
+// Cloud Recording のセッション情報を保持（簡易: メモリ）
+const recordings = new Map(); // channel -> { resourceId, sid, uid }
+
+// 録画用 UID（通常の参加者と被らない値）
+const RECORD_UID = Number(process.env.AGORA_RECORD_UID || 9999);
+
+// Cloud Recording 開始ヘルパー
+async function startCloudRecording(channel) {
+  try {
+    if (recordings.has(channel)) {
+      return recordings.get(channel);
+    }
+
+    // 1) acquire
+    const acquireResp = await fetch(
+      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/acquire`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json;charset=utf-8",
+          Authorization: agoraAuthHeader(),
+        },
+        body: JSON.stringify({
+          cname: channel,
+          uid: String(RECORD_UID),
+          clientRequest: {
+            resourceExpiredHour: 24,
+          },
+        }),
+      }
+    );
+    const acquireData = await acquireResp.json();
+    if (!acquireResp.ok) {
+      console.error("[recording] acquire failed", acquireData);
+      return null;
+    }
+    const resourceId = acquireData.resourceId;
+
+    // 録画クライアント用トークン（CERT がない場合は省略）
+    let recToken = undefined;
+    if (CERT) {
+      const role = RtcRole.PUBLISHER;
+      const expire = Math.floor(Date.now() / 1000) + TTL;
+      recToken = RtcTokenBuilder.buildTokenWithUid(
+        APP_ID,
+        CERT,
+        channel,
+        RECORD_UID,
+        role,
+        expire
+      );
+    }
+
+    const storageConfig = buildStorageConfig(channel);
+
+    // 2) start
+    const clientRequest = {
+      recordingConfig: {
+        channelType: 0,  // 0: 通話
+        streamTypes: 2,  // 2: audio + video
+        videoStreamType: 0,
+        maxIdleTime: 30,
+      },
+      storageConfig,
+    };
+    if (recToken) clientRequest.token = recToken;
+
+    const startResp = await fetch(
+      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/mode/mix/start`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json;charset=utf-8",
+          Authorization: agoraAuthHeader(),
+        },
+        body: JSON.stringify({
+          cname: channel,
+          uid: String(RECORD_UID),
+          clientRequest,
+        }),
+      }
+    );
+    const startData = await startResp.json();
+    if (!startResp.ok) {
+      console.error("[recording] start failed", startData);
+      return null;
+    }
+
+    const { sid } = startData;
+    const info = { resourceId, sid, uid: RECORD_UID };
+    recordings.set(channel, info);
+    console.log("[recording] started", channel, info);
+    return info;
+  } catch (err) {
+    console.error("[recording] start error", err);
+    return null;
+  }
+}
+
+// Cloud Recording 停止ヘルパー
+async function stopCloudRecording(channel) {
+  try {
+    const info = recordings.get(channel);
+    if (!info) return;
+
+    const { resourceId, sid, uid } = info;
+    const stopResp = await fetch(
+      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/stop`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json;charset=utf-8",
+          Authorization: agoraAuthHeader(),
+        },
+        body: JSON.stringify({
+          cname: channel,
+          uid: String(uid),
+          clientRequest: {},
+        }),
+      }
+    );
+    const stopData = await stopResp.json();
+    if (!stopResp.ok) {
+      console.error("[recording] stop failed", stopData);
+    } else {
+      console.log("[recording] stopped", channel, stopData);
+    }
+    recordings.delete(channel);
+  } catch (err) {
+    console.error("[recording] stop error", err);
+  }
+}
+
 // --- 待機と部屋管理 ---
 const queue = []; // [{id, at}]
 const rooms = new Map(); // channel -> { users:[id1,id2] }
@@ -94,7 +263,7 @@ const PAYOFF = { CC:[3,3], CD:[0,5], DC:[5,0], DD:[1,1] };
 const games = new Map();
 
 // ゲーム参加（channel と client側で作った playerId を紐づけ）
-app.post("/game/join", (req, res) => {
+app.post("/game/join", async (req, res) => {
   const { channel, playerId } = req.body || {};
   if (!channel || !playerId) return res.status(400).json({ error: "channel and playerId required" });
 
@@ -108,6 +277,11 @@ app.post("/game/join", (req, res) => {
   g.players.add(String(playerId));
   if (!g.totals.has(String(playerId))) g.totals.set(String(playerId), 0);
 
+  // プレイヤーが2人揃ったら録画開始（既に開始済みなら内部でなにもしない）
+  if (g.players.size >= 2) {
+    startCloudRecording(channel); // await してもいいが、レスポンスを遅らせたくないなら fire-and-forget でOK
+  }
+
   return res.json({
     ok: true,
     round: g.round,
@@ -119,7 +293,7 @@ app.post("/game/join", (req, res) => {
 });
 
 // 選択をサーバに送信
-app.post("/game/choice", (req, res) => {
+app.post("/game/choice", async (req, res) => {
   const { channel, playerId, round, choice } = req.body || {};
   if (!channel || !playerId || !choice) {
     return res.status(400).json({
@@ -168,6 +342,8 @@ app.post("/game/choice", (req, res) => {
 
     if (rNow >= 10) {
       g.over = true;
+      // ゲーム終了時に録画停止
+      stopCloudRecording(channel); // await しても OK
     } else {
       g.round = rNow + 1;
     }
