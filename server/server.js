@@ -66,7 +66,7 @@ function buildStorageConfig(channel) {
     accessKey,
     secretKey,
     // バケット内のパス: pd/<channel>/...
-    fileNamePrefix: ["pd", channel],
+    fileNamePrefix: ["pd", safeSegment],
   };
   if (endpoint) {
     cfg.extensionParams = { endpoint };
