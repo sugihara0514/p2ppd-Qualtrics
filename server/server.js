@@ -7,10 +7,10 @@ import pkg from "agora-access-token";
 const { RtcTokenBuilder, RtcRole } = pkg;
 
 // QualtricsのURLを許可する
-const allowedOrigin = new Set([
+const allowedOrigin = [
   "https://survey.syd1.qualtrics.com",
-  "https://p2ppd-qualtrics-static.onrender.com"
-]);
+  "https://p2ppd-qualtrics-static.onrender.com",
+];
 const corsOptions = {
   origin: allowedOrigin,
   methods: ["GET", "POST", "OPTIONS"],
