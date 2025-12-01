@@ -5,6 +5,8 @@ import { joinQueue, pollMatch, getToken } from "./api.js";
 import { createRtc } from "./rtc.js";
 import { startGame } from "./game.js";
 
+const API_BASE = "https://p2ppd-qualtrics.onrender.com";
+
 let matching = false;       // 二重起動防止
 let matchTimer = null;      // setInterval のハンドル
 
@@ -64,8 +66,29 @@ export async function enterFlow(APP_ID, useToken = true) {
   startGame(channel);
   matching = false;
 
-  // ページ離脱時にleaveできるようにフック
-  window.__PD_LEAVE__ = rtc.leave;
+  // ページ離脱時に leave + Cloud Recording 停止 を行うフック
+  window.__PD_LEAVE__ = async () => {
+    try {
+      // まず Agora チャンネルから離脱（カメラOFF）
+      await rtc.leave();
+    } catch (e) {
+      console.warn("[MATCH] rtc.leave error", e);
+    }
+
+    try {
+      // 次に録画停止APIを叩く
+      if (channel) {
+        await fetch(`${API_BASE}/record/stop`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channel }),
+        });
+        console.log("[MATCH] record/stop sent for", channel);
+      }
+    } catch (e) {
+      console.warn("[MATCH] record/stop error", e);
+    }
+  };
 }
 
 // ===== 自動起動ブロック =====

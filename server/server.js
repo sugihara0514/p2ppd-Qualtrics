@@ -292,6 +292,16 @@ app.post("/game/join", async (req, res) => {
   });
 });
 
+// 録画を外部から明示的に止めるAPI
+app.post("/record/stop", async (req, res) => {
+  const { channel } = req.body || {};
+  if (!channel) {
+    return res.status(400).json({ error: "channel required" });
+  }
+  await stopCloudRecording(channel);  // 既に録画終了済みなら何もしない実装にしておく
+  return res.json({ ok: true });
+});
+
 // 選択をサーバに送信
 app.post("/game/choice", async (req, res) => {
   const { channel, playerId, round, choice } = req.body || {};
@@ -342,8 +352,6 @@ app.post("/game/choice", async (req, res) => {
 
     if (rNow >= 10) {
       g.over = true;
-      // ゲーム終了時に録画停止
-      stopCloudRecording(channel); // await しても OK
     } else {
       g.round = rNow + 1;
     }
