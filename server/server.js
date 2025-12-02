@@ -135,7 +135,21 @@ async function startCloudRecording(channel) {
         channelType: 0,  // 0: 通話
         streamTypes: 2,  // 2: audio + video
         videoStreamType: 0,
-        maxIdleTime: 30,
+        maxIdleTime: 60,
+
+        // 横長 1280x720 のキャンバスで録画
+        transcodingConfig: {
+          width: 1280,       // キャンバス横幅
+          height: 720,       // キャンバス縦幅（⇒ 16:9）
+          fps: 15,
+          bitrate: 1200,
+          mixedVideoLayout: 1,  // Best Fit Layout
+          backgroundColor: "#000000",
+        },
+      },
+      recordingFileConfig: {
+        // HLS と MP4 を両方出す
+        avFileType: ["hls", "mp4"],
       },
       storageConfig,
     };
