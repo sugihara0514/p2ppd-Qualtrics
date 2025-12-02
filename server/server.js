@@ -136,7 +136,6 @@ async function startCloudRecording(channel) {
         channelType: 0,  // 0: 通話
         streamTypes: 2,  // 2: audio + video
         streamMode: "standard",  // individual の標準モード
-        audioProfile: 1,      // 標準音質
         maxIdleTime: 60,
 
         // どのUIDを録画するか
