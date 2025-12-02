@@ -101,6 +101,7 @@ async function startCloudRecording(channel) {
           uid: String(RECORD_UID),
           clientRequest: {
             resourceExpiredHour: 24,
+            scene: 0,
           },
         }),
       }
