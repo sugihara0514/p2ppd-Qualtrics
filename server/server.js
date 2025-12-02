@@ -134,7 +134,8 @@ async function startCloudRecording(channel) {
       recordingConfig: {
         channelType: 0,  // 0: 通話
         streamTypes: 2,  // 2: audio + video
-        videoStreamType: 0,
+        streamMode: "standard",  // individual の標準モード
+        audioProfile: 1,      // 標準音質
         maxIdleTime: 60,
 
         // 横長 1280x720 のキャンバスで録画
@@ -146,7 +147,13 @@ async function startCloudRecording(channel) {
           mixedVideoLayout: 1,  // Best Fit Layout
           backgroundColor: "#000000",
         },
+        // どのUIDを録画するか
+        //   "#allstream#" にするとチャンネル内の全ユーザーを個別録画
+        subscribeUidGroup: 0,
+        subscribeVideoUids: ["#allstream#"],
+        subscribeAudioUids: ["#allstream#"],
       },
+
       recordingFileConfig: {
         // HLS と MP4 を両方出す
         avFileType: ["hls", "mp4"],
@@ -156,7 +163,7 @@ async function startCloudRecording(channel) {
     if (recToken) clientRequest.token = recToken;
 
     const startResp = await fetch(
-      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/mode/mix/start`,
+      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/mode/individual/start`,
       {
         method: "POST",
         headers: {
@@ -197,7 +204,7 @@ async function stopCloudRecording(channel) {
 
     const { resourceId, sid, uid } = info;
     const stopResp = await fetch(
-      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/stop`,
+      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/individual/stop`,
       {
         method: "POST",
         headers: {
