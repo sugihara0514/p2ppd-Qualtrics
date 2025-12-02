@@ -138,15 +138,6 @@ async function startCloudRecording(channel) {
         audioProfile: 1,      // 標準音質
         maxIdleTime: 60,
 
-        // 横長 1280x720 のキャンバスで録画
-        transcodingConfig: {
-          width: 1280,       // キャンバス横幅
-          height: 720,       // キャンバス縦幅（⇒ 16:9）
-          fps: 15,
-          bitrate: 1200,
-          mixedVideoLayout: 1,  // Best Fit Layout
-          backgroundColor: "#000000",
-        },
         // どのUIDを録画するか
         //   "#allstream#" にするとチャンネル内の全ユーザーを個別録画
         subscribeUidGroup: 0,
