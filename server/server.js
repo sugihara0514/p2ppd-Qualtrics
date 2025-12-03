@@ -147,7 +147,7 @@ async function startCloudRecording(channel) {
 
       recordingFileConfig: {
         // HLS と MP4 を両方出す
-        avFileType: ["hls", "mp4"],
+        avFileType: ["hls"],
       },
       storageConfig,
     };
