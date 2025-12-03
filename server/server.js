@@ -66,7 +66,7 @@ function buildStorageConfig(channel) {
     accessKey,
     secretKey,
     // バケット内のパス: pd/<channel>/...
-    fileNamePrefix: ["pd", safeSegment],
+    fileNamePrefix: ["test_1203", safeSegment],
   };
   if (endpoint) {
     cfg.extensionParams = { endpoint };
@@ -146,7 +146,6 @@ async function startCloudRecording(channel) {
       },
 
       recordingFileConfig: {
-        // HLS と MP4 を両方出す
         avFileType: ["hls"],
       },
       storageConfig,
