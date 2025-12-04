@@ -142,8 +142,8 @@ async function startCloudRecording(channel) {
     transcodingConfig: {
       width: 1280,    // 出力mp4の解像度（横長）
       height: 720,
-      fps: 15,
-      bitrate: 2000,  // 必要に応じて調整
+      fps: 30,
+      bitrate: 2800,  // 必要に応じて調整
 
       // 3 = カスタムレイアウト（layoutConfigを使う）
       mixedVideoLayout: 3,
