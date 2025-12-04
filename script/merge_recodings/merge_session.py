@@ -1,13 +1,17 @@
+#individualモード用
 import os
 import re
 import subprocess
 from supabase import create_client, Client
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ==== 設定 ====
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]  # サーバ用キー推奨
-BUCKET = "pd-recordings"          # 実際のバケット名に合わせる
-ROOT_PREFIX = "test_1203"         # 今の fileNamePrefix[0]
+BUCKET = "p2ppd-movie"          # 実際のバケット名に合わせる
+ROOT_PREFIX = "test1203"         # 今の fileNamePrefix[0]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -17,7 +21,7 @@ MPD_RE = re.compile(
 )
 
 def list_room_folders():
-    # test_1203/ 直下のフォルダ一覧（= safeChannel）
+    # 直下のフォルダ一覧（= safeChannel）
     items = supabase.storage.from_(BUCKET).list(ROOT_PREFIX)
     return [obj["name"] for obj in items if obj.get("name")]
 
@@ -35,9 +39,8 @@ def make_local_from_mpd_signed_url(mpd_path: str, out_dir: str):
     """
     Supabase 上の mpd への署名付きURLを取得 → ffmpeg で 1本の WebM を作る
     """
-    # 署名付きURLを発行（非公開バケット前提）
-    signed = supabase.storage.from_(BUCKET).create_signed_url(mpd_path, 60 * 60)
-    mpd_url = signed["signedURL"]
+    # public URLを発行
+    mpd_url = supabase.storage.from_(BUCKET).get_public_url(mpd_path)
 
     # ファイル名から uid を抽出
     filename = os.path.basename(mpd_path)
@@ -57,7 +60,7 @@ def make_local_from_mpd_signed_url(mpd_path: str, out_dir: str):
     )
 
 def main():
-    # 例: test_1203/ 配下の全 room を処理
+    # 配下の全 room を処理
     rooms = list_room_folders()
     print("rooms:", rooms)
 

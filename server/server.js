@@ -8,7 +8,7 @@ const { RtcTokenBuilder, RtcRole } = pkg;
 
 // QualtricsのURLを許可する
 const allowedOrigin = [
-  "https://survey.syd1.qualtrics.com",
+  "https://survey.syd1.qualtrics.com", 
   "https://p2ppd-qualtrics-static.onrender.com",
 ];
 const corsOptions = {
@@ -66,7 +66,7 @@ function buildStorageConfig(channel) {
     accessKey,
     secretKey,
     // バケット内のパス: pd/<channel>/...
-    fileNamePrefix: ["test1203", safeSegment],
+    fileNamePrefix: ["test1204", safeSegment], //フォルダ名を変えると探しやすくなる
   };
   if (endpoint) {
     cfg.extensionParams = { endpoint };
@@ -135,25 +135,19 @@ async function startCloudRecording(channel) {
       recordingConfig: {
         channelType: 0,  // 0: 通話
         streamTypes: 2,  // 2: audio + video
-        streamMode: "standard",  // individual の標準モード
-        maxIdleTime: 60,
-
-        // どのUIDを録画するか
-        //   "#allstream#" にするとチャンネル内の全ユーザーを個別録画
-        subscribeUidGroup: 0,
-        subscribeVideoUids: ["#allstream#"],
-        subscribeAudioUids: ["#allstream#"],
+        videoStreamType: 0,
+        maxIdleTime: 30,
       },
-
+      // MP4 で保存
       recordingFileConfig: {
-        avFileType: ["hls"],
+        avFileType: [ "mp4"], 
       },
       storageConfig,
     };
     if (recToken) clientRequest.token = recToken;
 
     const startResp = await fetch(
-      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/mode/individual/start`,
+      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/mode/mix/start`,
       {
         method: "POST",
         headers: {
@@ -194,7 +188,7 @@ async function stopCloudRecording(channel) {
 
     const { resourceId, sid, uid } = info;
     const stopResp = await fetch(
-      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/individual/stop`,
+      `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/stop`,
       {
         method: "POST",
         headers: {
