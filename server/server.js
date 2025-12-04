@@ -138,10 +138,10 @@ async function startCloudRecording(channel) {
         videoStreamType: 0,
         maxIdleTime: 30,
       },
-      // MP4 で保存
+      // HLS + MP4
       recordingFileConfig: {
-        avFileType: [ "mp4"], 
-      },
+        avFileType: ["hls", "mp4"], 
+    },
       storageConfig,
     };
     if (recToken) clientRequest.token = recToken;
