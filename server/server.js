@@ -132,19 +132,58 @@ async function startCloudRecording(channel) {
 
     // 2) start
     const clientRequest = {
-      recordingConfig: {
-        channelType: 0,  // 0: 通話
-        streamTypes: 2,  // 2: audio + video
-        videoStreamType: 0,
-        maxIdleTime: 30,
-      },
-      // HLS + MP4
-      recordingFileConfig: {
-        avFileType: ["hls", "mp4"], 
+  recordingConfig: {
+    channelType: 0,  // 0: 通話
+    streamTypes: 2,  // 2: audio + video
+    videoStreamType: 0,
+    maxIdleTime: 30,
+
+    // 左右1:1の横長レイアウト
+    transcodingConfig: {
+      width: 1280,    // 出力mp4の解像度（横長）
+      height: 720,
+      fps: 15,
+      bitrate: 2000,  // 必要に応じて調整
+
+      // 3 = カスタムレイアウト（layoutConfigを使う）
+      mixedVideoLayout: 3,
+
+      // 2人を左右に均等配置
+      layoutConfig: [
+        {
+          // 左の人
+          // uidを省略すると「映像を送ってきた順」に割当てられる
+          x_axis: 0.0,
+          y_axis: 0.0,
+          width: 0.5,    // 画面左半分
+          height: 1.0,   // 全高さ
+          alpha: 1.0,
+          // 1 = Fit（黒帯出てもいいから切り取りを減らす）
+          render_mode: 1,
+        },
+        {
+          // 右の人
+          x_axis: 0.5,
+          y_axis: 0.0,
+          width: 0.5,    // 画面右半分
+          height: 1.0,
+          alpha: 1.0,
+          render_mode: 1,
+        },
+      ],
     },
-      storageConfig,
-    };
-    if (recToken) clientRequest.token = recToken;
+  },
+
+  // HLS + MP4
+  recordingFileConfig: {
+    avFileType: ["hls", "mp4"],
+  },
+
+  storageConfig,
+};
+
+if (recToken) clientRequest.token = recToken;
+
 
     const startResp = await fetch(
       `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/mode/mix/start`,
