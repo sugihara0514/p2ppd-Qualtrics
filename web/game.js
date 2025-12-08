@@ -42,6 +42,7 @@ export function startGame(channel) {
   let roundStartAt = null;        // そのラウンドが「選択可能になった」時刻
   let pendingRtMs  = null;        // 直近ラウンドのRT（ms）
   const rtList     = [];          // [{ round, rtMs }, ...]
+  let pendingRound = null;        // サーバー側で用意された次ラウンド番号
 
   // ゲーム参加宣言
   fetch(`${API_BASE}/game/join`, {
@@ -184,6 +185,7 @@ export function startGame(channel) {
               "pd_history_json",
               JSON.stringify(history)
             );
+            console.log("Saving total & history", myTotal, history);
           }
 
           // このラウンドの感情入力を開始
@@ -232,25 +234,28 @@ export function startGame(channel) {
                   "pd_emotion_json",
                   JSON.stringify(emotionHistory)
                 );
+                console.log("Saving emotion", currentRound, v1, v2, v3, emotionHistory);
               }
 
               // スライダーパネルを隠す
               emoUI.style.display = "none";
+
+              // サーバー側ですでに pendingRound がセットされていれば、ここで次ラウンド開始
+              beginNextRound();
             };
           }
 
-          // 次ラウンドが始まっていればボタンを再有効化
+           // 次ラウンドがサーバー側で始まっていたら pendingRound に記録
           if (s.round > currentRound) {
-            currentRound = s.round;
-            setTimeout(() => {
-              status.textContent = `Round ${currentRound}/10: 選択してください`;
-              setButtonsEnabled(true);
-              canChoose = true;
+            // サーバーが次ラウンドに進んだことだけ覚えておく
+            pendingRound = s.round;
 
-              // 次ラウンド開始時刻
-              roundStartAt = performance.now();
-              pendingRtMs = null;
-            }, 600);
+            // 感情スライダー入力待ちでなければ、すぐ次ラウンドを開始
+            if (!waitingEmotion) {
+              setTimeout(() => {
+                beginNextRound();  // 下の方で定義している関数
+              }, 600);
+            }
           }
         }
       } catch (e) {
@@ -262,5 +267,17 @@ export function startGame(channel) {
   function setButtonsEnabled(on) {
     btnC.disabled = !on;
     btnD.disabled = !on;
+  }
+
+  function beginNextRound() {
+    if (pendingRound == null) return;
+
+    currentRound = pendingRound;
+    pendingRound = null;
+
+    status.textContent = `Round ${currentRound}/10: 選択してください`;
+    setButtonsEnabled(true);
+    canChoose = true;
+    roundStartAt = performance.now();
   }
 }
