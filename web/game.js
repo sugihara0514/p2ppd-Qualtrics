@@ -11,7 +11,7 @@ export function startGame(channel) {
   const emo1    = document.getElementById("emo1");
   const emo2    = document.getElementById("emo2");
   const emo3    = document.getElementById("emo3");
-  // const emoNext = document.getElementById("emotionNext");
+  const emoNext = document.getElementById("emotionNext");
 
   const API_BASE = "https://p2ppd-qualtrics.onrender.com"; // APIのURL
   // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
@@ -137,10 +137,20 @@ export function startGame(channel) {
           setButtonsEnabled(false);
 
           if (window.Qualtrics && Qualtrics.SurveyEngine) {
-            // 反応時間を保存
+            // ラウンドごとの反応時間を保存
             Qualtrics.SurveyEngine.setEmbeddedData(
               "pd_rt_json",
               JSON.stringify(rtList)
+            );
+            // ラウンドごとの感情
+            Qualtrics.SurveyEngine.setEmbeddedData(
+              "pd_emotion_json",
+              JSON.stringify(emotionHistory)
+            );
+            // ラウンドごとの選択
+            Qualtrics.SurveyEngine.setEmbeddedData(
+              "pd_history_json",
+              JSON.stringify(history)
             );
           }
           return;
