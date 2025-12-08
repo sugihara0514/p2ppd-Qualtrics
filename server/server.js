@@ -66,7 +66,7 @@ function buildStorageConfig(channel) {
     accessKey,
     secretKey,
     // バケット内のパス: pd/<channel>/...
-    fileNamePrefix: ["test1204", safeSegment], //フォルダ名を変えると探しやすくなる
+    fileNamePrefix: ["pd", safeSegment], //supabaseのpdフォルダに録画を保存
   };
   if (endpoint) {
     cfg.extensionParams = { endpoint };

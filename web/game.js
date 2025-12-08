@@ -6,6 +6,13 @@ export function startGame(channel) {
   const btnC = document.getElementById("btnC");
   const btnD = document.getElementById("btnD");
 
+  // 感情スライダー関連 DOM
+  const emoUI   = document.getElementById("emotionUI");
+  const emo1    = document.getElementById("emo1");
+  const emo2    = document.getElementById("emo2");
+  const emo3    = document.getElementById("emo3");
+  // const emoNext = document.getElementById("emotionNext");
+
   const API_BASE = "https://p2ppd-qualtrics.onrender.com"; // APIのURL
   // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
   let pid =
@@ -27,6 +34,15 @@ export function startGame(channel) {
   let pollTimer = null;
   const history = []; // {round, me, opp, myPayoff, myTotal}
 
+  // 感情スライダーの履歴: [{ round, emo1, emo2, emo3 }, ...]
+  const emotionHistory = [];
+  let waitingEmotion = false; // このラウンドの感情入力待ちか
+
+   // 反応時間用
+  let roundStartAt = null;        // そのラウンドが「選択可能になった」時刻
+  let pendingRtMs  = null;        // 直近ラウンドのRT（ms）
+  const rtList     = [];          // [{ round, rtMs }, ...]
+
   // ゲーム参加宣言
   fetch(`${API_BASE}/game/join`, {
     method: "POST",
@@ -39,6 +55,11 @@ export function startGame(channel) {
     status.textContent = `Round ${currentRound}/10: 選択してください`;
     setButtonsEnabled(true);
     canChoose = true;
+
+    // RT計測：ラウンド開始時刻を記録
+    roundStartAt = performance.now();
+    pendingRtMs = null;
+
     startPolling();
   }).catch(err => {
     console.error("game/join failed", err);
@@ -52,6 +73,21 @@ export function startGame(channel) {
     if (!canChoose) return;
     canChoose = false;
     setButtonsEnabled(false);
+
+    // 反応時間計測
+    if (roundStartAt != null) {
+      pendingRtMs = performance.now() - roundStartAt; // ms
+      rtList.push({ round: currentRound, rtMs: pendingRtMs });
+
+      // 必要ならラウンドごとに Embedded Data にも保存
+      if (window.Qualtrics && Qualtrics.SurveyEngine) {
+        Qualtrics.SurveyEngine.setEmbeddedData(
+          `pd_rt_round${currentRound}`,
+          String(Math.round(pendingRtMs))
+        );
+      }
+    }
+
     status.textContent = `Round ${currentRound}/10: あなたは ${choice} を選びました。相手の結果待ち…`;
 
     const body = { channel, playerId: pid, round: currentRound, choice };
@@ -99,6 +135,14 @@ export function startGame(channel) {
           const my = s.myTotal ?? 0;
           status.textContent = `終了！あなたの合計=${my}`;
           setButtonsEnabled(false);
+
+          if (window.Qualtrics && Qualtrics.SurveyEngine) {
+            // 反応時間を保存
+            Qualtrics.SurveyEngine.setEmbeddedData(
+              "pd_rt_json",
+              JSON.stringify(rtList)
+            );
+          }
           return;
         }
 
@@ -132,6 +176,59 @@ export function startGame(channel) {
             );
           }
 
+          // このラウンドの感情入力を開始
+          if (emoUI && emo1 && emo2 && emo3 && emoNext) {
+            waitingEmotion = true;
+            emoUI.style.display = "block";
+
+            // デフォルト値をリセット
+            emo1.value = "0";
+            emo2.value = "0";
+            emo3.value = "0";
+
+            // 「次へ」ボタンのクリックハンドラをセット（多重登録を防ぐため一旦解除）
+            emoNext.onclick = () => {
+              if (!waitingEmotion) return;
+              waitingEmotion = false;
+
+              const v1 = Number(emo1.value);
+              const v2 = Number(emo2.value);
+              const v3 = Number(emo3.value);
+
+              emotionHistory.push({
+                round: currentRound,
+                emo1: v1,
+                emo2: v2,
+                emo3: v3,
+              });
+
+              if (window.Qualtrics && Qualtrics.SurveyEngine) {
+                // ラウンドごとに保存したければ
+                Qualtrics.SurveyEngine.setEmbeddedData(
+                  `pd_emo1_round${currentRound}`,
+                  String(v1)
+                );
+                Qualtrics.SurveyEngine.setEmbeddedData(
+                  `pd_emo2_round${currentRound}`,
+                  String(v2)
+                );
+                Qualtrics.SurveyEngine.setEmbeddedData(
+                  `pd_emo3_round${currentRound}`,
+                  String(v3)
+                );
+
+                // 全ラウンド分をJSONでまとめるなら
+                Qualtrics.SurveyEngine.setEmbeddedData(
+                  "pd_emotion_json",
+                  JSON.stringify(emotionHistory)
+                );
+              }
+
+              // スライダーパネルを隠す
+              emoUI.style.display = "none";
+            };
+          }
+
           // 次ラウンドが始まっていればボタンを再有効化
           if (s.round > currentRound) {
             currentRound = s.round;
@@ -139,6 +236,10 @@ export function startGame(channel) {
               status.textContent = `Round ${currentRound}/10: 選択してください`;
               setButtonsEnabled(true);
               canChoose = true;
+
+              // 次ラウンド開始時刻
+              roundStartAt = performance.now();
+              pendingRtMs = null;
             }, 600);
           }
         }
