@@ -132,18 +132,18 @@ async function startCloudRecording(channel) {
 
     // 2) start
     const clientRequest = {
-  recordingConfig: {
-    channelType: 0,  // 0: 通話
-    streamTypes: 2,  // 2: audio + video
-    videoStreamType: 0,
-    maxIdleTime: 30,
+      recordingConfig: {
+        channelType: 0,  // 0: 通話
+        streamTypes: 2,  // 2: audio + video
+        videoStreamType: 0,
+        maxIdleTime: 30,
 
-    // 左右1:1の横長レイアウト
-    transcodingConfig: {
-      width: 1280,    // 出力mp4の解像度（横長）
-      height: 720,
-      fps: 30,
-      bitrate: 2800,  // 必要に応じて調整
+      // 左右1:1の横長レイアウト
+      transcodingConfig: {
+        width: 1280,    // 出力mp4の解像度（横長）
+        height: 720,
+        fps: 30,
+        bitrate: 2800,  // 必要に応じて調整
 
       // 3 = カスタムレイアウト（layoutConfigを使う）
       mixedVideoLayout: 3,
@@ -332,9 +332,10 @@ app.post("/game/join", async (req, res) => {
   if (!g.totals.has(String(playerId))) g.totals.set(String(playerId), 0);
 
   // プレイヤーが2人揃ったら録画開始（既に開始済みなら内部でなにもしない）
-  if (g.players.size >= 2) {
-    startCloudRecording(channel); // await してもいいが、レスポンスを遅らせたくないなら fire-and-forget でOK
-  }
+  // テスト中につき、一時録画停止中
+  // if (g.players.size >= 2) {
+  //   startCloudRecording(channel); // await してもいいが、レスポンスを遅らせたくないなら fire-and-forget でOK
+  // }
 
   return res.json({
     ok: true,
