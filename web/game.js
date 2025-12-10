@@ -26,6 +26,7 @@ export function startGame(channel) {
 
   // Qualtrics側にも保存（任意）
   if (window.Qualtrics && Qualtrics.SurveyEngine) {
+    Qualtrics.SurveyEngine.setEmbeddedData("pd_player_id", String(pid));
     Qualtrics.SurveyEngine.setJSEmbeddedData("pd_player_id", String(pid));
   }
 

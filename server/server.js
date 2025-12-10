@@ -332,7 +332,6 @@ app.post("/game/join", async (req, res) => {
   if (!g.totals.has(String(playerId))) g.totals.set(String(playerId), 0);
 
   // プレイヤーが2人揃ったら録画開始（既に開始済みなら内部でなにもしない）
-  // テスト中につき、一時録画停止中
   if (g.players.size >= 2) {
     startCloudRecording(channel); // await してもいいが、レスポンスを遅らせたくないなら fire-and-forget でOK
   }
