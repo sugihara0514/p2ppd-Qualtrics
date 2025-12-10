@@ -26,7 +26,7 @@ export function startGame(channel) {
 
   // Qualtrics側にも保存（任意）
   if (window.Qualtrics && Qualtrics.SurveyEngine) {
-    Qualtrics.SurveyEngine.setEmbeddedData("pd_player_id", String(pid));
+    // Qualtrics.SurveyEngine.setEmbeddedData("pd_player_id", String(pid));
     Qualtrics.SurveyEngine.setJSEmbeddedData("pd_player_id", String(pid));
   }
 
@@ -83,10 +83,10 @@ export function startGame(channel) {
 
       // 必要ならラウンドごとに Embedded Data にも保存
       if (window.Qualtrics && Qualtrics.SurveyEngine) {
-        Qualtrics.SurveyEngine.setJSEmbeddedData(
-          `pd_rt_round${currentRound}`,
-          String(Math.round(pendingRtMs))
-        );
+        // Qualtrics.SurveyEngine.setJSEmbeddedData(
+        //   `pd_rt_round${currentRound}`,
+        //   String(Math.round(pendingRtMs))
+        // );
       }
     }
 
@@ -138,23 +138,23 @@ export function startGame(channel) {
           status.textContent = `終了！あなたの合計=${my}`;
           setButtonsEnabled(false);
 
-          if (window.Qualtrics && Qualtrics.SurveyEngine) {
-            // ラウンドごとの反応時間を保存
-            Qualtrics.SurveyEngine.setJSEmbeddedData(
-              "pd_rt_json",
-              JSON.stringify(rtList)
-            );
-            // ラウンドごとの感情
-            Qualtrics.SurveyEngine.setJSEmbeddedData(
-              "pd_emotion_json",
-              JSON.stringify(emotionHistory)
-            );
-            // ラウンドごとの選択
-            Qualtrics.SurveyEngine.setJSEmbeddedData(
-              "pd_history_json",
-              JSON.stringify(history)
-            );
-          }
+          // if (window.Qualtrics && Qualtrics.SurveyEngine) {
+          //   // ラウンドごとの反応時間を保存
+          //   Qualtrics.SurveyEngine.setJSEmbeddedData(
+          //     "pd_rt_json",
+          //     JSON.stringify(rtList)
+          //   );
+          //   // ラウンドごとの感情
+          //   Qualtrics.SurveyEngine.setJSEmbeddedData(
+          //     "pd_emotion_json",
+          //     JSON.stringify(emotionHistory)
+          //   );
+          //   // ラウンドごとの選択
+          //   Qualtrics.SurveyEngine.setJSEmbeddedData(
+          //     "pd_history_json",
+          //     JSON.stringify(history)
+          //   );
+          // }
           return;
         }
 
@@ -178,14 +178,14 @@ export function startGame(channel) {
             myTotal,
           });
           if (window.Qualtrics && Qualtrics.SurveyEngine) {
-            Qualtrics.SurveyEngine.setJSEmbeddedData(
-              "pd_total",
-              String(myTotal)
-            );
-            Qualtrics.SurveyEngine.setJSEmbeddedData(
-              "pd_history_json",
-              JSON.stringify(history)
-            );
+            // Qualtrics.SurveyEngine.setJSEmbeddedData(
+            //   "pd_total",
+            //   String(myTotal)
+            // );
+            // Qualtrics.SurveyEngine.setJSEmbeddedData(
+            //   "pd_history_json",
+            //   JSON.stringify(history)
+            // );
             console.log("Saving total & history", myTotal, history);
           } else {
             console.warn("Qualtrics not found when saving total/history");
@@ -219,24 +219,24 @@ export function startGame(channel) {
 
               if (window.Qualtrics && Qualtrics.SurveyEngine) {
                 // ラウンドごとに保存したければ
-                Qualtrics.SurveyEngine.setJSEmbeddedData(
-                  `pd_emo1_round${currentRound}`,
-                  String(v1)
-                );
-                Qualtrics.SurveyEngine.setJSEmbeddedData(
-                  `pd_emo2_round${currentRound}`,
-                  String(v2)
-                );
-                Qualtrics.SurveyEngine.setJSEmbeddedData(
-                  `pd_emo3_round${currentRound}`,
-                  String(v3)
-                );
+                // Qualtrics.SurveyEngine.setJSEmbeddedData(
+                //   `pd_emo1_round${currentRound}`,
+                //   String(v1)
+                // );
+                // Qualtrics.SurveyEngine.setJSEmbeddedData(
+                //   `pd_emo2_round${currentRound}`,
+                //   String(v2)
+                // );
+                // Qualtrics.SurveyEngine.setJSEmbeddedData(
+                //   `pd_emo3_round${currentRound}`,
+                //   String(v3)
+                // );
 
-                // 全ラウンド分をJSONでまとめるなら
-                Qualtrics.SurveyEngine.setJSEmbeddedData(
-                  "pd_emotion_json",
-                  JSON.stringify(emotionHistory)
-                );
+                // // 全ラウンド分をJSONでまとめるなら
+                // Qualtrics.SurveyEngine.setJSEmbeddedData(
+                //   "pd_emotion_json",
+                //   JSON.stringify(emotionHistory)
+                // );
                 console.log("Saving emotion", currentRound, v1, v2, v3, emotionHistory);
               }
 
