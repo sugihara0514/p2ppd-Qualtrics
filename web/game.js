@@ -63,14 +63,16 @@ export function startGame(channel) {
   .then(r => r.json())
   .then(init => {
     currentRound = init.round || 1;
-    status.textContent = `Round ${currentRound}/10: 選択してください`;
-    setButtonsEnabled(true);
-    canChoose = true;
 
-    // RT計測：ラウンド開始時刻を記録
-    roundStartAt = performance.now();
-    pendingRtMs = null;
+    // 最初は「相手の選択予測」フェーズ
+    status.textContent = `Round ${currentRound}/10: 相手が何を選ぶか予測してください`;
+    setButtonsEnabled(false);
+    canChoose = false;
 
+    // 予測スライダーを表示
+    showPredictionUI();
+
+    // サーバ状態のポーリング開始
     startPolling();
   }).catch(err => {
     console.error("game/join failed", err);
@@ -166,6 +168,37 @@ export function startGame(channel) {
           // }
           return;
         }
+        const serverStage = s.stage || "choice";
+        const serverRound = s.round || currentRound;
+
+        // ラウンド番号をサーバに合わせる（感情完了後に +1 される）
+        if (serverRound !== currentRound) {
+          currentRound = serverRound;
+        }
+
+        // ===== フェーズごとのUI制御 =====
+
+        // 1) 予測フェーズ：まだ自分が予測していなければスライダーを出す
+        if (serverStage === "predict") {
+          if (!waitingPrediction && predUI && predUI.style.display === "none") {
+            status.textContent = `Round ${currentRound}/10: 相手が何を選ぶか予測してください`;
+            setButtonsEnabled(false);
+            canChoose = false;
+            showPredictionUI();
+          }
+        }
+
+        // 2) 選択フェーズ：C/D ボタンを有効化
+        if (serverStage === "choice") {
+          if (!canChoose) {
+            status.textContent = `Round ${currentRound}/10: 選択してください`;
+            setButtonsEnabled(true);
+            canChoose = true;
+
+            roundStartAt = performance.now();
+            pendingRtMs = null;
+          }
+        }
 
         // 直近の結果が確定していて、そのラウンドが今のラウンドと同じなら表示
         if (s.lastResult && s.lastResult.round === currentRound) {
@@ -211,7 +244,7 @@ export function startGame(channel) {
             emo3.value = "0";
 
             // 「次へ」ボタンのクリックハンドラをセット（多重登録を防ぐため一旦解除）
-            emoNext.onclick = () => {
+            emoNext.onclick = async () => {
               if (!waitingEmotion) return;
               waitingEmotion = false;
 
@@ -252,8 +285,26 @@ export function startGame(channel) {
               // スライダーパネルを隠す
               emoUI.style.display = "none";
 
-              // サーバー側ですでに pendingRound がセットされていれば、ここで次ラウンド開始
-              beginNextRound();
+               // サーバに感情データを送信
+              try {
+                await fetch(`${API_BASE}/game/emotion`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    channel,
+                    playerId: pid,
+                    round: currentRound,
+                    emo1: v1,
+                    emo2: v2,
+                    emo3: v3,
+                  }),
+                });
+              } catch (e) {
+                console.error("game/emotion failed", e);
+              }
+
+              // 自分の感情入力は完了。相手待ち。
+              status.textContent = `Round ${currentRound}/10: 相手の感情入力が終わるのを待っています…`;
             };
           }
 
@@ -292,4 +343,43 @@ export function startGame(channel) {
     canChoose = true;
     roundStartAt = performance.now();
   }
+
+  function showPredictionUI() {
+    if (!predUI || !predSlider || !predNext) return;
+
+    waitingPrediction = true;
+    predUI.style.display = "block";
+
+    // 初期値リセット（必要に応じて）
+    predSlider.value = predSlider.defaultValue || "0";
+
+    predNext.onclick = async () => {
+      if (!waitingPrediction) return;
+      waitingPrediction = false;
+
+      const v = Number(predSlider.value);
+      predictionHistory.push({ round: currentRound, value: v });
+
+      // サーバに予測結果を送る
+      try {
+        await fetch(`${API_BASE}/game/predict`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            channel,
+            playerId: pid,
+            round: currentRound,
+            prediction: v,
+          }),
+        });
+      } catch (e) {
+        console.error("game/predict failed", e);
+      }
+
+      // 自分の予測は完了。相手待ち。
+      predUI.style.display = "none";
+      status.textContent = `Round ${currentRound}/10: 相手の予測が終わるのを待っています…`;
+    };
+  }
+
 }
