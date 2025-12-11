@@ -13,6 +13,11 @@ export function startGame(channel) {
   const emo3    = document.getElementById("emo3");
   const emoNext = document.getElementById("emotionNext");
 
+  //予測スライダー関連 DOM
+  const predUI    = document.getElementById("predictUI");
+  const predSlider = document.getElementById("predictSlider");
+  const predNext   = document.getElementById("predictNext");
+
   const API_BASE = "https://p2ppd-qualtrics.onrender.com"; // APIのURL
   // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
   let pid =
@@ -38,6 +43,10 @@ export function startGame(channel) {
   // 感情スライダーの履歴: [{ round, emo1, emo2, emo3 }, ...]
   const emotionHistory = [];
   let waitingEmotion = false; // このラウンドの感情入力待ちか
+
+  const predictionHistory = [];   //　追加 [{ round, value }, ...]
+  let waitingPrediction = false;  // このラウンドの予測入力待ちか
+
 
    // 反応時間用
   let roundStartAt = null;        // そのラウンドが「選択可能になった」時刻

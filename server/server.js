@@ -323,8 +323,15 @@ app.post("/game/join", async (req, res) => {
 
   if (!games.has(channel)) {
     games.set(channel, {
-      round: 1, players: new Set(), choices: new Map(), totals: new Map(),
-      lastResult: null, over: false
+      round: 1,
+      players: new Set(),
+      stage: "predict",          // "predict" | "choice" | "emotion"
+      predictions: new Map(),    // playerId -> predictionValue
+      choices: new Map(),        // playerId -> "C" | "D"
+      emotions: new Map(),       // playerId -> { emo1, emo2, emo3 }
+      totals: new Map(),
+      lastResult: null,
+      over: false,
     });
   }
   const g = games.get(channel);
@@ -355,6 +362,42 @@ app.post("/record/stop", async (req, res) => {
   }
   await stopCloudRecording(channel);  // 既に録画終了済みなら何もしない実装にしておく
   return res.json({ ok: true });
+});
+
+// 相手の選択予測をサーバに送信
+app.post("/game/predict", (req, res) => {
+  const { channel, playerId, round, prediction } = req.body || {};
+  if (!channel || !playerId || prediction == null) {
+    return res.status(400).json({
+      error: "missing_fields",
+      need: ["channel","playerId","round","prediction"],
+      got: req.body
+    });
+  }
+  const g = games.get(channel);
+  if (!g) return res.status(400).json({ error: "game_not_found", channel });
+  if (g.over) return res.status(400).json({ error: "game_over" });
+
+  // 予測フェーズ以外なら一応受けるが、ステージは変えない
+  if (!g.stage) g.stage = "predict";
+
+  // プレイヤー登録漏れ対策
+  g.players.add(String(playerId));
+  if (!g.totals.has(String(playerId))) g.totals.set(String(playerId), 0);
+
+  const rNow = g.round;
+  if (Number(round) !== rNow) {
+    console.warn("[PREDICT] round mismatch: client=", round, "server=", rNow);
+  }
+
+  g.predictions.set(String(playerId), Number(prediction));
+
+  // 2人分そろったら次は「選択フェーズ」
+  if (g.predictions.size >= g.players.size) {
+    g.stage = "choice";
+  }
+
+  return res.json({ ok: true, round: g.round, stage: g.stage });
 });
 
 // 選択をサーバに送信
@@ -405,14 +448,63 @@ app.post("/game/choice", async (req, res) => {
     };
     g.choices.clear();
 
-    if (rNow >= 10) {
-      g.over = true;
-    } else {
-      g.round = rNow + 1;
-    }
+    // 感情スライダーバーに移行
+    g.stage = "emotion";
   }
 
   return res.json({ ok: true, serverRound: g.round });
+});
+
+// 感情スライダーの結果を送信
+app.post("/game/emotion", (req, res) => {
+  const { channel, playerId, round, emo1, emo2, emo3 } = req.body || {};
+  if (!channel || !playerId || emo1 == null || emo2 == null || emo3 == null) {
+    return res.status(400).json({
+      error: "missing_fields",
+      need: ["channel","playerId","round","emo1","emo2","emo3"],
+      got: req.body
+    });
+  }
+  const g = games.get(channel);
+  if (!g) return res.status(400).json({ error: "game_not_found", channel });
+  if (g.over) return res.status(400).json({ error: "game_over" });
+
+  const rNow = g.round;
+  if (Number(round) !== rNow) {
+    console.warn("[EMOTION] round mismatch: client=", round, "server=", rNow);
+  }
+
+  if (!g.stage) g.stage = "emotion";
+  g.players.add(String(playerId));
+
+  g.emotions.set(String(playerId), {
+    round: rNow,
+    emo1: Number(emo1),
+    emo2: Number(emo2),
+    emo3: Number(emo3),
+  });
+
+  // 2人分そろったら次ラウンドへ
+  if (g.emotions.size >= g.players.size) {
+    g.emotions.clear();
+    g.predictions.clear();
+    g.choices.clear();
+
+    if (rNow >= 10) {
+      g.over = true;
+      g.stage = "done";
+    } else {
+      g.round = rNow + 1;
+      g.stage = "predict"; // 次ラウンドの予測フェーズへ
+    }
+  }
+
+  return res.json({
+    ok: true,
+    round: g.round,
+    stage: g.stage,
+    over: g.over,
+  });
 });
 
 
@@ -428,6 +520,7 @@ app.get("/game/state", (req, res) => {
     exists: true,
     round: g.round,
     over: g.over,
+    stage: g.stage || "choice",
     lastResult: g.lastResult, // 直近の確定結果（null のこともある）
     myTotal
   });
