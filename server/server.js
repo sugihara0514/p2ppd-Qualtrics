@@ -328,7 +328,7 @@ app.post("/game/join", async (req, res) => {
       stage: "predict",          // "predict" | "choice" | "emotion"
       predictions: new Map(),    // playerId -> predictionValue
       choices: new Map(),        // playerId -> "C" | "D"
-      emotions: new Map(),       // playerId -> { emo1, emo2, emo3 }
+      emotions: new Map(),       // playerId -> { emo1, emo2, emo3, ・・・ }
       totals: new Map(),
       lastResult: null,
       over: false,
@@ -457,11 +457,11 @@ app.post("/game/choice", async (req, res) => {
 
 // 感情スライダーの結果を送信
 app.post("/game/emotion", (req, res) => {
-  const { channel, playerId, round, emo1, emo2, emo3 } = req.body || {};
-  if (!channel || !playerId || emo1 == null || emo2 == null || emo3 == null) {
+  const { channel, playerId, round, emo1, emo2, emo3, emo4, emo5, emo6, emo7} = req.body || {};
+  if (!channel || !playerId || emo1 == null || emo2 == null || emo3 == null || emo4 == null || emo5 == null || emo6 == null || emo7 == null) {
     return res.status(400).json({
       error: "missing_fields",
-      need: ["channel","playerId","round","emo1","emo2","emo3"],
+      need: ["channel","playerId","round","emo1","emo2","emo3","emo4","emo5","emo6","emo7"],
       got: req.body
     });
   }
@@ -482,6 +482,10 @@ app.post("/game/emotion", (req, res) => {
     emo1: Number(emo1),
     emo2: Number(emo2),
     emo3: Number(emo3),
+    emo4: Number(emo4),
+    emo5: Number(emo5),
+    emo6: Number(emo6),
+    emo7: Number(emo7),
   });
 
   // 2人分そろったら次ラウンドへ

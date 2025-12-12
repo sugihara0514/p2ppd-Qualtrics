@@ -11,6 +11,10 @@ export function startGame(channel) {
   const emo1    = document.getElementById("emo1");
   const emo2    = document.getElementById("emo2");
   const emo3    = document.getElementById("emo3");
+  const emo4    = document.getElementById("emo4");
+  const emo5    = document.getElementById("emo5");
+  const emo6    = document.getElementById("emo6");
+  const emo7    = document.getElementById("emo7");
   const emoNext = document.getElementById("emotionNext");
   let lastResultRoundHandled = null;
 
@@ -261,7 +265,7 @@ export function startGame(channel) {
           }
 
           // このラウンドの感情入力を開始
-          if (emoUI && emo1 && emo2 && emo3 && emoNext) {
+          if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7 && emoNext) {
             waitingEmotion = true;
             emoUI.style.display = "block";
 
@@ -269,6 +273,10 @@ export function startGame(channel) {
             emo1.value = "0";
             emo2.value = "0";
             emo3.value = "0";
+            emo4.value = "0";
+            emo5.value = "0";
+            emo6.value = "0";
+            emo7.value = "0";
 
             // 「次へ」ボタンのクリックハンドラをセット（多重登録を防ぐため一旦解除）
             emoNext.onclick = async () => {
@@ -278,12 +286,20 @@ export function startGame(channel) {
               const v1 = Number(emo1.value);
               const v2 = Number(emo2.value);
               const v3 = Number(emo3.value);
+              const v4 = Number(emo4.value);
+              const v5 = Number(emo5.value);
+              const v6 = Number(emo6.value);
+              const v7 = Number(emo7.value);
 
               emotionHistory.push({
                 round: currentRound,
                 emo1: v1,
                 emo2: v2,
                 emo3: v3,
+                emo4: v4,
+                emo5: v5,
+                emo6: v6,
+                emo7: v7,
               });
 
               if (window.Qualtrics && Qualtrics.SurveyEngine) {
@@ -306,7 +322,7 @@ export function startGame(channel) {
                 //   "pd_emotion_json",
                 //   JSON.stringify(emotionHistory)
                 // );
-                console.log("Saving emotion", currentRound, v1, v2, v3, emotionHistory);
+                console.log("Saving emotion", currentRound, v1, v2, v3, v4, v5, v6, v7, emotionHistory);
               }
 
               // スライダーパネルを隠す
@@ -324,6 +340,10 @@ export function startGame(channel) {
                     emo1: v1,
                     emo2: v2,
                     emo3: v3,
+                    emo4: v4,
+                    emo5: v5,
+                    emo6: v6,
+                    emo7: v7,
                   }),
                 });
               } catch (e) {
