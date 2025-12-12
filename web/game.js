@@ -12,11 +12,15 @@ export function startGame(channel) {
   const emo2    = document.getElementById("emo2");
   const emo3    = document.getElementById("emo3");
   const emoNext = document.getElementById("emotionNext");
+  let lastResultRoundHandled = null;
+
 
   //予測スライダー関連 DOM
   const predUI    = document.getElementById("predictUI");
   const predSlider = document.getElementById("predictSlider");
   const predNext   = document.getElementById("predictNext");
+  let lastStage = null;
+  let predictionDoneRound = null;
 
   const API_BASE = "https://p2ppd-qualtrics.onrender.com"; // APIのURL
   // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
@@ -201,7 +205,14 @@ export function startGame(channel) {
         }
 
         // 直近の結果が確定していて、そのラウンドが今のラウンドと同じなら表示
-        if (s.lastResult && s.lastResult.round === currentRound) {
+        if (
+          s.lastResult && 
+          s.lastResult.round === currentRound && 
+          lastResultRoundHandled !== currentRound
+        ) {
+
+          lastResultRoundHandled = currentRound;  // このラウンドはもう処理したマーク
+
           const pair = Object.entries(s.lastResult.choices); // [[pid, "C"|"D"], ...]
           const meChoice = s.lastResult.choices[pid];
           const oppEntry = pair.find(([id]) => id !== pid);
@@ -359,6 +370,9 @@ export function startGame(channel) {
 
       const v = Number(predSlider.value);
       predictionHistory.push({ round: currentRound, value: v });
+
+      predictionDoneRound = currentRound;  // ★このラウンドは予測済み
+      predUI.style.display = "none";
 
       // サーバに予測結果を送る
       try {
