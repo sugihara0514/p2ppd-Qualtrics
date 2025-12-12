@@ -41,6 +41,7 @@ export function startGame(channel) {
 
   let currentRound = 1;
   let canChoose = false;
+  let hasChosenThisRound = false;
   let pollTimer = null;
   const history = []; // {round, me, opp, myPayoff, myTotal}
 
@@ -56,7 +57,6 @@ export function startGame(channel) {
   let roundStartAt = null;        // そのラウンドが「選択可能になった」時刻
   let pendingRtMs  = null;        // 直近ラウンドのRT（ms）
   const rtList     = [];          // [{ round, rtMs }, ...]
-  let pendingRound = null;        // サーバー側で用意された次ラウンド番号
 
   // ゲーム参加宣言
   fetch(`${API_BASE}/game/join`, {
@@ -90,6 +90,7 @@ export function startGame(channel) {
     if (!canChoose) return;
     canChoose = false;
     setButtonsEnabled(false);
+    hasChosenThisRound = true;            // このラウンドはもう選択済み
 
     // 反応時間計測
     if (roundStartAt != null) {
@@ -178,23 +179,38 @@ export function startGame(channel) {
         // ラウンド番号をサーバに合わせる（感情完了後に +1 される）
         if (serverRound !== currentRound) {
           currentRound = serverRound;
+
+          // 新しいラウンドなのでフラグ類をリセット
+          hasChosenThisRound      = false;
+          lastResultRoundHandled  = null;
+          waitingEmotion          = false;
+          waitingPrediction       = false;
+          predictionDoneRound     = null;
         }
 
         // ===== フェーズごとのUI制御 =====
 
         // 1) 予測フェーズ：まだ自分が予測していなければスライダーを出す
         if (serverStage === "predict") {
-          if (!waitingPrediction && predUI && predUI.style.display === "none") {
-            status.textContent = `Round ${currentRound}/10: 相手が何を選ぶか予測してください`;
+          if (predictionDoneRound !== currentRound) {
+            // まだこのラウンドで自分の予測を送っていない
+            if (!waitingPrediction && predUI) {
+              status.textContent = `Round ${currentRound}/10: 相手が何を選ぶか予測してください`;
+              setButtonsEnabled(false);
+              canChoose = false;
+              showPredictionUI();  // このタイミングで1回だけ開く
+            }
+          } else {
+            // 自分はもう予測済み → 相手待ち表示に固定
+            status.textContent = `Round ${currentRound}/10: 相手の予測が終わるのを待っています…`;
             setButtonsEnabled(false);
             canChoose = false;
-            showPredictionUI();
           }
         }
 
         // 2) 選択フェーズ：C/D ボタンを有効化
         if (serverStage === "choice") {
-          if (!canChoose) {
+          if (!hasChosenThisRound && !canChoose) {
             status.textContent = `Round ${currentRound}/10: 選択してください`;
             setButtonsEnabled(true);
             canChoose = true;
@@ -318,19 +334,6 @@ export function startGame(channel) {
               status.textContent = `Round ${currentRound}/10: 相手の感情入力が終わるのを待っています…`;
             };
           }
-
-           // 次ラウンドがサーバー側で始まっていたら pendingRound に記録
-          if (s.round > currentRound) {
-            // サーバーが次ラウンドに進んだことだけ覚えておく
-            pendingRound = s.round;
-
-            // 感情スライダー入力待ちでなければ、すぐ次ラウンドを開始
-            if (!waitingEmotion) {
-              setTimeout(() => {
-                beginNextRound();  // 下の方で定義している関数
-              }, 600);
-            }
-          }
         }
       } catch (e) {
         console.error("poll/state failed", e);
@@ -341,18 +344,6 @@ export function startGame(channel) {
   function setButtonsEnabled(on) {
     btnC.disabled = !on;
     btnD.disabled = !on;
-  }
-
-  function beginNextRound() {
-    if (pendingRound == null) return;
-
-    currentRound = pendingRound;
-    pendingRound = null;
-
-    status.textContent = `Round ${currentRound}/10: 選択してください`;
-    setButtonsEnabled(true);
-    canChoose = true;
-    roundStartAt = performance.now();
   }
 
   function showPredictionUI() {
