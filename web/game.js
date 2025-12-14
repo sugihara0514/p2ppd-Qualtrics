@@ -1,30 +1,36 @@
 // game.js
 export function startGame(channel) {
+
+  if (choiceUI) choiceUI.style.display = "none";
+  if (predUI) predUI.style.display = "none";
+  if (emoUI) emoUI.style.display = "none";
+  if (nextButton) nextButton.disabled = true;
+
   const ui = document.getElementById("gameUI");
-  ui.style.display = "block";
-  const status = document.getElementById("gameStatus");
-  const btnC = document.getElementById("btnC");
-  const btnD = document.getElementById("btnD");
+  if (ui) ui.style.display = "block";
 
-  // 感情スライダー関連 DOM
-  const emoUI   = document.getElementById("emotionUI");
-  const emo1    = document.getElementById("emo1");
-  const emo2    = document.getElementById("emo2");
-  const emo3    = document.getElementById("emo3");
-  const emo4    = document.getElementById("emo4");
-  const emo5    = document.getElementById("emo5");
-  const emo6    = document.getElementById("emo6");
-  const emo7    = document.getElementById("emo7");
-  const emoNext = document.getElementById("emotionNext");
-  let lastResultRoundHandled = null;
+  const status = document.getElementById("dynamicText");
+  // 次へボタン（predictNext/emotionNext/choice確定を全部これに統一）
+  const nextButton = document.getElementById("nextButton");
 
+  // 選択関連 DOM
+  const btnGreen = document.getElementById("greenButton");
+  const btnBlue = document.getElementById("blueButton");
+  const choiceUI = document.getElementById("container_choice_button");
 
   //予測スライダー関連 DOM
-  const predUI    = document.getElementById("predictUI");
+  const predUI    = document.getElementById("coop_slider_container_act");
   const predSlider = document.getElementById("predictSlider");
-  const predNext   = document.getElementById("predictNext");
-  let lastStage = null;
-  let predictionDoneRound = null;
+
+  // 感情スライダー関連 DOM
+  const emoUI = document.getElementById("emotionUI") || document.querySelector(".vertical-sliders");  
+  const emo1    = document.getElementById("mental_Slider1");
+  const emo2    = document.getElementById("mental_Slider2");
+  const emo3    = document.getElementById("mental_Slider3");
+  const emo4    = document.getElementById("mental_Slider4");
+  const emo5    = document.getElementById("mental_Slider5");
+  const emo6    = document.getElementById("mental_Slider6");
+  const emo7    = document.getElementById("mental_Slider7");
 
   const API_BASE = "https://p2ppd-qualtrics.onrender.com"; // APIのURL
   // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
@@ -44,10 +50,15 @@ export function startGame(channel) {
   }
 
   let currentRound = 1;
+  let predictionDoneRound = null;
+  let lastResultRoundHandled = null;
+
   let canChoose = false;
   let hasChosenThisRound = false;
   let pollTimer = null;
   const history = []; // {round, me, opp, myPayoff, myTotal}
+
+  let pendingChoice = null; // "C" or "D"（仮決定）
 
   // 感情スライダーの履歴: [{ round, emo1, emo2, emo3 }, ...]
   const emotionHistory = [];
@@ -87,60 +98,79 @@ export function startGame(channel) {
     status.textContent = "ゲーム初期化に失敗しました";
   });
 
-  btnC.onclick = () => choose("C");
-  btnD.onclick = () => choose("D");
-
-  async function choose(choice) {
+  btnC.onclick = () => {
     if (!canChoose) return;
-    canChoose = false;
-    setButtonsEnabled(false);
-    hasChosenThisRound = true;            // このラウンドはもう選択済み
+    pendingChoice = "C";
+    status.textContent = `Round ${currentRound}/10: 緑（C）を選択中。次へで確定。`;
+    updateNextEnabled();
+  };
 
-    // 反応時間計測
-    if (roundStartAt != null) {
-      pendingRtMs = performance.now() - roundStartAt; // ms
-      rtList.push({ round: currentRound, rtMs: pendingRtMs });
+  btnD.onclick = () => {
+    if (!canChoose) return;
+    pendingChoice = "D";
+    status.textContent = `Round ${currentRound}/10: 青（D）を選択中。次へで確定。`;
+    updateNextEnabled();
+  };
 
-      // 必要ならラウンドごとに Embedded Data にも保存
-      if (window.Qualtrics && Qualtrics.SurveyEngine) {
-        // Qualtrics.SurveyEngine.setJSEmbeddedData(
-        //   `pd_rt_round${currentRound}`,
-        //   String(Math.round(pendingRtMs))
-        // );
-      }
+  nextButton.onclick = async () => {
+    // 予測入力中なら予測確定
+    if (waitingPrediction) {
+      await submitPrediction();
+      return;
+    }
+    // 感情入力中なら感情確定
+    if (waitingEmotion) {
+      await submitEmotion();
+      return;
+    }
+    // 選択フェーズなら選択確定
+    if (canChoose) {
+      await submitChoice();
+      return;
+    }
+  };
+
+  async function submitChoice() {
+    if (!canChoose) return;
+    if (!pendingChoice) {
+      status.textContent = `Round ${currentRound}/10: 緑か青を選んでください。`;
+      return;
     }
 
-    status.textContent = `Round ${currentRound}/10: あなたは ${choice} を選びました。相手の結果待ち…`;
+    const choice = pendingChoice;
+    pendingChoice = null;
+
+    canChoose = false;
+    setChoiceButtonsEnabled(false);
+    hasChosenThisRound = true;
+
+    // 反応時間（確定タイミング基準にするならここが自然）
+    if (roundStartAt != null) {
+      pendingRtMs = performance.now() - roundStartAt;
+      rtList.push({ round: currentRound, rtMs: pendingRtMs });
+    }
+
+    status.textContent = `Round ${currentRound}/10: 確定=${choice}。相手の結果待ち…`;
 
     const body = { channel, playerId: pid, round: currentRound, choice };
-    console.log("[GAME] POST /game/choice", body);
+    const resp = await fetch(`${API_BASE}/game/choice`, {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(body),
+    });
 
-    try {
-      const resp = await fetch(`${API_BASE}/game/choice`, {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify(body),
-      });
+    const text = await resp.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch {}
 
-      // fetchは400/500でも例外にしない→ここで判断
-      const text = await resp.text();
-      let data = null;
-      try { 
-        data = text ? JSON.parse(text) : null; 
-      } catch (e) { /* サーバが空や非JSONでも続行 */ }
-
-      if (!resp.ok) {
-        console.error("choice HTTP error", resp.status, data || text);
-        status.textContent = `送信エラー(${resp.status}). ページ再読み込みしてください。`;
-        return;
-      }
-
-      console.log("[GAME] choice resp", data);
-      // 以降の進行はポーリング(/game/state)で拾う
-    } catch (err) {
-      console.error("game/choice failed", err);
-      status.textContent = "送信失敗（ネットワーク）。ページ再読み込みしてください。";
+    if (!resp.ok) {
+      console.error("choice HTTP error", resp.status, data || text);
+      status.textContent = `送信エラー(${resp.status}). ページ再読み込みしてください。`;
+      return;
     }
+
+    // 確定したので next は一旦無効（相手待ち）
+    updateNextEnabled();
   }
 
   function startPolling() {
@@ -215,9 +245,16 @@ export function startGame(channel) {
         // 2) 選択フェーズ：C/D ボタンを有効化
         if (serverStage === "choice") {
           if (!hasChosenThisRound && !canChoose) {
-            status.textContent = `Round ${currentRound}/10: 選択してください`;
-            setButtonsEnabled(true);
+            status.textContent = `Round ${currentRound}/10:  緑か青を選び、次へで確定してください`;
+            
+            // choice表示
+            if (predUI) predUI.style.display = "none";
+            if (emoUI) emoUI.style.display = "none";
+            if (choiceUI) choiceUI.style.display = "";            
+            
             canChoose = true;
+            pendingChoice = null;
+            setChoiceButtonsEnabled(true); // nextは pendingChoice が入るまで無効
 
             roundStartAt = performance.now();
             pendingRtMs = null;
@@ -265,9 +302,13 @@ export function startGame(channel) {
           }
 
           // このラウンドの感情入力を開始
-          if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7 && emoNext) {
+          if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7) {
             waitingEmotion = true;
-            emoUI.style.display = "block";
+            
+            // 表示切替
+            if (choiceUI) choiceUI.style.display = "none";
+            if (predUI) predUI.style.display = "none";
+            emoUI.style.display = "";
 
             // デフォルト値をリセット
             emo1.value = "0";
@@ -278,81 +319,8 @@ export function startGame(channel) {
             emo6.value = "0";
             emo7.value = "0";
 
-            // 「次へ」ボタンのクリックハンドラをセット（多重登録を防ぐため一旦解除）
-            emoNext.onclick = async () => {
-              if (!waitingEmotion) return;
-              waitingEmotion = false;
-
-              const v1 = Number(emo1.value);
-              const v2 = Number(emo2.value);
-              const v3 = Number(emo3.value);
-              const v4 = Number(emo4.value);
-              const v5 = Number(emo5.value);
-              const v6 = Number(emo6.value);
-              const v7 = Number(emo7.value);
-
-              emotionHistory.push({
-                round: currentRound,
-                emo1: v1,
-                emo2: v2,
-                emo3: v3,
-                emo4: v4,
-                emo5: v5,
-                emo6: v6,
-                emo7: v7,
-              });
-
-              if (window.Qualtrics && Qualtrics.SurveyEngine) {
-                // ラウンドごとに保存したければ
-                // Qualtrics.SurveyEngine.setJSEmbeddedData(
-                //   `pd_emo1_round${currentRound}`,
-                //   String(v1)
-                // );
-                // Qualtrics.SurveyEngine.setJSEmbeddedData(
-                //   `pd_emo2_round${currentRound}`,
-                //   String(v2)
-                // );
-                // Qualtrics.SurveyEngine.setJSEmbeddedData(
-                //   `pd_emo3_round${currentRound}`,
-                //   String(v3)
-                // );
-
-                // // 全ラウンド分をJSONでまとめるなら
-                // Qualtrics.SurveyEngine.setJSEmbeddedData(
-                //   "pd_emotion_json",
-                //   JSON.stringify(emotionHistory)
-                // );
-                console.log("Saving emotion", currentRound, v1, v2, v3, v4, v5, v6, v7, emotionHistory);
-              }
-
-              // スライダーパネルを隠す
-              emoUI.style.display = "none";
-
-               // サーバに感情データを送信
-              try {
-                await fetch(`${API_BASE}/game/emotion`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    channel,
-                    playerId: pid,
-                    round: currentRound,
-                    emo1: v1,
-                    emo2: v2,
-                    emo3: v3,
-                    emo4: v4,
-                    emo5: v5,
-                    emo6: v6,
-                    emo7: v7,
-                  }),
-                });
-              } catch (e) {
-                console.error("game/emotion failed", e);
-              }
-
-              // 自分の感情入力は完了。相手待ち。
-              status.textContent = `Round ${currentRound}/10: 相手の感情入力が終わるのを待っています…`;
-            };
+            status.textContent = `Round ${currentRound}/10: 感情（評価）を入力して次へで確定してください`;
+            updateNextEnabled();
           }
         }
       } catch (e) {
@@ -360,51 +328,102 @@ export function startGame(channel) {
       }
     }, 800); // 800ms間隔ポーリング
   }
-
   function setButtonsEnabled(on) {
-    btnC.disabled = !on;
-    btnD.disabled = !on;
+    if (btnGreen) btnGreen.disabled = !on;
+    if (btnBlue) btnBlue.disabled = !on;
+    if (nextButton) nextButton.disabled = !on;
+  }
+
+  function setChoiceButtonsEnabled(on) {
+    btnGreen.disabled = !on;
+    btnBlue.disabled  = !on;
+    updateNextEnabled();
+  }
+
+  function updateNextEnabled() {
+    // choice中は「仮決定がある時だけ next 有効」
+    if (canChoose) {
+      nextButton.disabled = !pendingChoice;
+      return;
+    }
+    // predict/emotion中は next 有効、待機中は無効、など運用に合わせて
+    if (waitingPrediction || waitingEmotion) {
+      nextButton.disabled = false;
+      return;
+    }
+    nextButton.disabled = true; // それ以外（相手待ちなど）
   }
 
   function showPredictionUI() {
-    if (!predUI || !predSlider || !predNext) return;
+    if (!predUI || !predSlider) return;
 
     waitingPrediction = true;
-    predUI.style.display = "block";
 
-    // 初期値リセット（必要に応じて）
+    // 表示切替（必要ならここでchoiceUI/emoUIを隠す）
+    if (choiceUI) choiceUI.style.display = "none";
+    if (emoUI) emoUI.style.display = "none";
+    predUI.style.display = ""; // CSSのgridに戻す :contentReference[oaicite:14]{index=14}
+
     predSlider.value = predSlider.defaultValue || "0";
+    status.textContent = `Round ${currentRound}/10: 相手が何を選ぶか予測してください`;
 
-    predNext.onclick = async () => {
-      if (!waitingPrediction) return;
-      waitingPrediction = false;
-
-      const v = Number(predSlider.value);
-      predictionHistory.push({ round: currentRound, value: v });
-
-      predictionDoneRound = currentRound;  // このラウンドは予測済み
-      predUI.style.display = "none";
-
-      // サーバに予測結果を送る
-      try {
-        await fetch(`${API_BASE}/game/predict`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            channel,
-            playerId: pid,
-            round: currentRound,
-            prediction: v,
-          }),
-        });
-      } catch (e) {
-        console.error("game/predict failed", e);
-      }
-
-      // 自分の予測は完了。相手待ち。
-      predUI.style.display = "none";
-      status.textContent = `Round ${currentRound}/10: 相手の予測が終わるのを待っています…`;
-    };
+    updateNextEnabled();
   }
 
+  async function submitPrediction() {
+    if (!waitingPrediction) return;
+    waitingPrediction = false;
+
+    const v = Number(predSlider.value);
+    predictionHistory.push({ round: currentRound, value: v });
+    predictionDoneRound = currentRound;
+
+    // 送信
+    try {
+      await fetch(`${API_BASE}/game/predict`, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ channel, playerId: pid, round: currentRound, prediction: v }),
+      });
+    } catch (e) {
+      console.error("game/predict failed", e);
+    }
+
+    // 相手待ち表示
+    predUI.style.display = "none";
+    status.textContent = `Round ${currentRound}/10: 相手の予測が終わるのを待っています…`;
+    updateNextEnabled();
+  }
+
+  async function submitEmotion() {
+    if (!waitingEmotion) return;
+    waitingEmotion = false;
+
+    const v1 = Number(emo1.value);
+    const v2 = Number(emo2.value);
+    const v3 = Number(emo3.value);
+    const v4 = Number(emo4.value);
+    const v5 = Number(emo5.value);
+    const v6 = Number(emo6.value);
+    const v7 = Number(emo7.value);
+
+    emotionHistory.push({ round: currentRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 });
+
+    // UIを閉じる
+    if (emoUI) emoUI.style.display = "none";
+
+    // サーバ送信（既存の /game/emotion をそのまま）
+    try {
+      await fetch(`${API_BASE}/game/emotion`, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ channel, playerId: pid, round: currentRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 }),
+      });
+    } catch (e) {
+      console.error("game/emotion failed", e);
+    }
+
+    status.textContent = `Round ${currentRound}/10: 相手の感情入力が終わるのを待っています…`;
+    updateNextEnabled();
+  }
 }
