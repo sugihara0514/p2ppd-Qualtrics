@@ -52,6 +52,7 @@ export function startGame(channel) {
   let currentRound = 1;
   let predictionDoneRound = null;
   let lastResultRoundHandled = null;
+  let lastResultText = "";
 
   let canChoose = false;
   let hasChosenThisRound = false;
@@ -277,7 +278,8 @@ export function startGame(channel) {
           const myPayoff = s.lastResult.payoffs[pid];
           const myTotal = s.lastResult.totals[pid];
 
-          status.textContent = `Round ${currentRound}/10 結果: あなた=${meChoice}, 相手=${oppChoice} ⇒ 利得 ${myPayoff}（累計 ${myTotal}）`;
+          // status.textContent = `Round ${currentRound}/10 結果: あなた=${meChoice}, 相手=${oppChoice} ⇒ 利得 ${myPayoff}（累計 ${myTotal}）`;
+          lastResultText = `Round ${currentRound}/10 結果: あなた=${meChoice}, 相手=${oppChoice} ⇒ 利得 ${myPayoff}（累計 ${myTotal}）`;
 
           // 履歴に追加してEmbedded Dataにも反映（途中経過も欲しければ）
           history.push({
@@ -319,7 +321,9 @@ export function startGame(channel) {
             emo6.value = "0";
             emo7.value = "0";
 
-            status.textContent = `Round ${currentRound}/10: 感情（評価）を入力して次へで確定してください`;
+            status.textContent =
+            `${lastResultText}\n` +
+            `今の感情（評価）を入力して「次へ」で確定してください。`;            
             updateNextEnabled();
           }
         }
