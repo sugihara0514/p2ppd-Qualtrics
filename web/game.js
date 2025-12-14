@@ -98,14 +98,14 @@ export function startGame(channel) {
     status.textContent = "ゲーム初期化に失敗しました";
   });
 
-  btnC.onclick = () => {
+  button_green.onclick = () => {
     if (!canChoose) return;
     pendingChoice = "C";
     status.textContent = `Round ${currentRound}/10: 緑（C）を選択中。次へで確定。`;
     updateNextEnabled();
   };
 
-  btnD.onclick = () => {
+  btnBlue.onclick = () => {
     if (!canChoose) return;
     pendingChoice = "D";
     status.textContent = `Round ${currentRound}/10: 青（D）を選択中。次へで確定。`;
