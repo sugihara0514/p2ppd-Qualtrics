@@ -15,7 +15,7 @@ export function startGame(channel) {
 
   //予測スライダー関連 DOM
   const predUI    = document.getElementById("coop_slider_container_act");
-  const predSlider = document.getElementById("predictSlider");
+  const predSlider = document.getElementById("coop_Slider");
 
   // 感情スライダー関連 DOM
   const emoUI = document.getElementById("emotionUI") || document.querySelector(".vertical-sliders");  
