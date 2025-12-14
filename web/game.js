@@ -1,11 +1,6 @@
 // game.js
 export function startGame(channel) {
 
-  if (choiceUI) choiceUI.style.display = "none";
-  if (predUI) predUI.style.display = "none";
-  if (emoUI) emoUI.style.display = "none";
-  if (nextButton) nextButton.disabled = true;
-
   const ui = document.getElementById("gameUI");
   if (ui) ui.style.display = "block";
 
@@ -31,6 +26,11 @@ export function startGame(channel) {
   const emo5    = document.getElementById("mental_Slider5");
   const emo6    = document.getElementById("mental_Slider6");
   const emo7    = document.getElementById("mental_Slider7");
+
+  if (choiceUI) choiceUI.style.display = "none";
+  if (predUI) predUI.style.display = "none";
+  if (emoUI) emoUI.style.display = "none";
+  if (nextButton) nextButton.disabled = true;
 
   const API_BASE = "https://p2ppd-qualtrics.onrender.com"; // APIのURL
   // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
