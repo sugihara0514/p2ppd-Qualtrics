@@ -98,7 +98,7 @@ export function startGame(channel) {
     status.textContent = "ゲーム初期化に失敗しました";
   });
 
-  button_green.onclick = () => {
+  btnGreen.onclick = () => {
     if (!canChoose) return;
     pendingChoice = "C";
     status.textContent = `Round ${currentRound}/10: 緑（C）を選択中。次へで確定。`;
