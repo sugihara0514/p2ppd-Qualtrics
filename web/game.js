@@ -42,7 +42,8 @@ export function startGame(channel) {
 
   function setGray(el) {
     if (!el) return;
-    el.classList.remove("unisible", "disable");
+    el.classList.toggle("grayout", !!on);// 表示の薄さ
+    el.classList.toggle("disable", !!on);// 操作不能
   }
 
   function moveIn(el) {
