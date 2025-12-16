@@ -40,7 +40,7 @@ export function startGame(channel) {
     el.classList.add("unvisible", "disable");
   }
 
-  function setGray(el) {
+  function setGray(el, on) {
     if (!el) return;
     el.classList.toggle("grayout", !!on);// 表示の薄さ
     el.classList.toggle("disable", !!on);// 操作不能
