@@ -1,7 +1,7 @@
 // game.js
 export function startGame(channel) {
 
-  const ui = document.getElementById("gameUI");
+  const ui = document.querySelector(".container");
   if (ui) ui.style.display = "block";
 
   const status = document.getElementById("dynamicText");
@@ -18,14 +18,65 @@ export function startGame(channel) {
   const predSlider = document.getElementById("coop_Slider");
 
   // 感情スライダー関連 DOM
-  const emoUI = document.getElementById("emotionUI") || document.querySelector(".vertical-sliders");  
-  const emo1    = document.getElementById("mental_Slider1");
-  const emo2    = document.getElementById("mental_Slider2");
-  const emo3    = document.getElementById("mental_Slider3");
-  const emo4    = document.getElementById("mental_Slider4");
-  const emo5    = document.getElementById("mental_Slider5");
-  const emo6    = document.getElementById("mental_Slider6");
-  const emo7    = document.getElementById("mental_Slider7");
+  const emoUI = document.getElementById("mental_sliders") || document.querySelector(".vertical-sliders");  
+  const emo1    = document.getElementById("stress_Slider");
+  const emo2    = document.getElementById("emotionalvalue_Slider");
+  const emo3    = document.getElementById("moralburden_Slider");
+  const emo4    = document.getElementById("fairness_Slider");
+  const emo5    = document.getElementById("trust_Slider");
+  const emo6    = document.getElementById("autonomy_Slider");
+  const emo7    = document.getElementById("competence_Slider");
+
+  // 遷移アニメーション
+  const ANIM_MS = 1000; // time_animation と同じ
+
+  function showBase(el) {
+    if (!el) return;
+    el.classList.remove("unvisible", "disable");
+  }
+
+  function hideBase(el) {
+    if (!el) return;
+    el.classList.add("unvisible", "disable");
+  }
+
+  function moveIn(el) {
+    if (!el) return;
+    el.classList.remove("out_position");
+    el.classList.add("set_position");
+  }
+  function moveOut(el) {
+    if (!el) return;
+    el.classList.add("out_position");
+    el.classList.remove("set_position");
+  }
+
+  // “フェードインして使える状態にする”
+  function fadeInEnable(el) {
+    if (!el) return;
+    // フェードアウト残骸を消す
+    el.classList.remove("anim_fadeout");
+    // 位置を入れる（必要なUIだけ）
+    moveIn(el);
+    // 見える+操作可
+    showBase(el);
+    // アニメ
+    el.classList.add("anim_fadein");
+    setTimeout(() => el.classList.remove("anim_fadein"), ANIM_MS);
+  }
+
+  // “フェードアウトして隠す”
+  function fadeOutDisable(el) {
+    if (!el) return;
+    el.classList.remove("anim_fadein");
+    el.classList.add("anim_fadeout");
+    setTimeout(() => {
+      el.classList.remove("anim_fadeout");
+      hideBase(el);
+      moveOut(el);
+    }, ANIM_MS);
+  }
+
 
   if (choiceUI) choiceUI.style.display = "none";
   if (predUI) predUI.style.display = "none";
@@ -249,9 +300,11 @@ export function startGame(channel) {
             status.textContent = `Round ${currentRound}/10:  緑か青を選び、次へで確定してください`;
             
             // choice表示
-            if (predUI) predUI.style.display = "none";
-            if (emoUI) emoUI.style.display = "none";
-            if (choiceUI) choiceUI.style.display = "";            
+            if (predUI) fadeOutDisable(predUI);
+            setGray(emoUI, true);
+            fadeInEnable(choiceUI);           
+             // choice入力中は next を見せる（有効/無効は updateNextEnabled が管理）
+            fadeInEnable(nextButton);
             
             canChoose = true;
             pendingChoice = null;
@@ -307,10 +360,12 @@ export function startGame(channel) {
           if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7) {
             waitingEmotion = true;
             
-            // 表示切替
-            if (choiceUI) choiceUI.style.display = "none";
-            if (predUI) predUI.style.display = "none";
-            emoUI.style.display = "";
+            // 表示切替（結果→心的状態入力）
+            if (choiceUI) fadeOutDisable(choiceUI);
+            if (predUI)  fadeOutDisable(predUI);
+            setGray(emoUI, false);
+            // 心的状態入力中は next を見せる（有効/無効は updateNextEnabled が管理）
+            fadeInEnable(nextButton);
 
             // デフォルト値をリセット
             emo1.value = "0";
@@ -363,10 +418,12 @@ export function startGame(channel) {
 
     waitingPrediction = true;
 
-    // 表示切替（必要ならここでchoiceUI/emoUIを隠す）
-    if (choiceUI) choiceUI.style.display = "none";
-    if (emoUI) emoUI.style.display = "none";
-    predUI.style.display = ""; // CSSのgridに戻す :contentReference[oaicite:14]{index=14}
+    // 表示切替
+    if (choiceUI) fadeOutDisable(choiceUI);
+    setGray(emoUI, true);
+    fadeInEnable(predUI);
+    // 予測入力中は next を見せる（有効/無効は updateNextEnabled が管理）
+    fadeInEnable(nextButton);
 
     predSlider.value = predSlider.defaultValue || "0";
     status.textContent = `Round ${currentRound}/10: 相手が何を選ぶか予測してください`;
@@ -393,8 +450,9 @@ export function startGame(channel) {
       console.error("game/predict failed", e);
     }
 
-    // 相手待ち表示
-    predUI.style.display = "none";
+    // 相手待ち表示：予測UIは閉じる / next も隠す
+    fadeOutDisable(predUI);
+    hideBase(nextButton);
     status.textContent = `Round ${currentRound}/10: 相手の予測が終わるのを待っています…`;
     updateNextEnabled();
   }
@@ -413,8 +471,9 @@ export function startGame(channel) {
 
     emotionHistory.push({ round: currentRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 });
 
-    // UIを閉じる
-    if (emoUI) emoUI.style.display = "none";
+    // UIを閉じる（心的状態は「グレーアウト」にする）
+    setGray(emoUI, true);
+    hideBase(nextButton);
 
     // サーバ送信（既存の /game/emotion をそのまま）
     try {
