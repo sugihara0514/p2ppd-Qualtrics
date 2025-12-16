@@ -27,7 +27,7 @@ export function startGame(channel) {
   const emo6    = document.getElementById("autonomy_Slider");
   const emo7    = document.getElementById("competence_Slider");
 
-  // 遷移アニメーション
+  // ===== UI 表示制御（honnbann 1.html の unvisible/disable/grayout 前提） =====
   const ANIM_MS = 1000; // time_animation と同じ
 
   function showBase(el) {
@@ -38,6 +38,11 @@ export function startGame(channel) {
   function hideBase(el) {
     if (!el) return;
     el.classList.add("unvisible", "disable");
+  }
+
+  function setGray(el) {
+    if (!el) return;
+    el.classList.remove("unisible", "disable");
   }
 
   function moveIn(el) {
@@ -54,14 +59,10 @@ export function startGame(channel) {
   // “フェードインして使える状態にする”
   function fadeInEnable(el) {
     if (!el) return;
-    // フェードアウト残骸を消す
-    el.classList.remove("anim_fadeout");
-    // 位置を入れる（必要なUIだけ）
-    moveIn(el);
-    // 見える+操作可
-    showBase(el);
-    // アニメ
-    el.classList.add("anim_fadein");
+    el.classList.remove("anim_fadeout");  // フェードアウト残骸を消す
+    moveIn(el);                           // 位置を入れる（必要なUIだけ
+    showBase(el);                         // 見える+操作可
+    el.classList.add("anim_fadein");      // アニメ
     setTimeout(() => el.classList.remove("anim_fadein"), ANIM_MS);
   }
 
@@ -77,11 +78,18 @@ export function startGame(channel) {
     }, ANIM_MS);
   }
 
+  // 初期状態（予測/選択は非表示 + 操作不可）
+  hideBase(choiceUI);
+  moveOut(choiceUI);
+  hideBase(predUI);
+  moveOut(predUI);
 
-  if (choiceUI) choiceUI.style.display = "none";
-  if (predUI) predUI.style.display = "none";
-  if (emoUI) emoUI.style.display = "none";
+  hideBase(nextButton);
   if (nextButton) nextButton.disabled = true;
+
+  // mental_sliders は「常に表示してグレーアウト」で運用
+  setGray(emoUI, true);
+
 
   const API_BASE = "https://p2ppd-qualtrics.onrender.com"; // APIのURL
   // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
