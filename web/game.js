@@ -27,6 +27,14 @@ export function startGame(channel) {
   const emo6    = document.getElementById("autonomy_Slider");
   const emo7    = document.getElementById("competence_Slider");
 
+  // ラウンド数
+  const roundEl = document.getElementById("round_N");
+
+  function renderRound() {
+    if (!roundEl) return;
+    roundEl.textContent = String(currentRound);
+  }
+
   // ===== UI 表示制御（honnbann 1.html の unvisible/disable/grayout 前提） =====
   const ANIM_MS = 1000; // time_animation と同じ
 
@@ -143,6 +151,7 @@ export function startGame(channel) {
   .then(r => r.json())
   .then(init => {
     currentRound = init.round || 1;
+    renderRound();
 
     // 最初は「相手の選択予測」フェーズ
     status.textContent = `Round ${currentRound}/10: 相手が何を選ぶか予測してください`;
@@ -274,6 +283,7 @@ export function startGame(channel) {
         // ラウンド番号をサーバに合わせる（感情完了後に +1 される）
         if (serverRound !== currentRound) {
           currentRound = serverRound;
+          renderRound();
 
           // 新しいラウンドなのでフラグ類をリセット
           hasChosenThisRound      = false;
