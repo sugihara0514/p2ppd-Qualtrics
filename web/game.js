@@ -111,10 +111,28 @@ export function startGame(channel) {
     localStorage.setItem("pd_player_id", pid);
   }
 
-  // Qualtrics側にも保存（任意）
+  // Qualtrics側に保存
+  function qSet(key, val) {
+    try {
+      if (!(window.Qualtrics && Qualtrics.SurveyEngine)) return false;
+      const se = Qualtrics.SurveyEngine;
+      const v = (typeof val === "string") ? val : JSON.stringify(val);
+      if (typeof se.setJSEmbeddedData === "function") {
+        se.setJSEmbeddedData(key, v);
+        return true;
+      }
+      if (typeof se.setEmbeddedData === "function") {
+        se.setEmbeddedData(key, v);
+        return true;
+      }
+    } catch (e) {
+      console.warn("qSet failed", key, e);
+    }
+    return false;
+  }
+
   if (window.Qualtrics && Qualtrics.SurveyEngine) {
-    // Qualtrics.SurveyEngine.setEmbeddedData("pd_player_id", String(pid));
-    Qualtrics.SurveyEngine.setJSEmbeddedData("pd_player_id", String(pid));
+    qSet("pd_player_id", String(pid));
   }
 
   let currentRound = 1;
@@ -258,23 +276,11 @@ export function startGame(channel) {
           status.textContent = `終了！あなたの合計=${my}`;
           setButtonsEnabled(false);
 
-          // if (window.Qualtrics && Qualtrics.SurveyEngine) {
-          //   // ラウンドごとの反応時間を保存
-          //   Qualtrics.SurveyEngine.setJSEmbeddedData(
-          //     "pd_rt_json",
-          //     JSON.stringify(rtList)
-          //   );
-          //   // ラウンドごとの感情
-          //   Qualtrics.SurveyEngine.setJSEmbeddedData(
-          //     "pd_emotion_json",
-          //     JSON.stringify(emotionHistory)
-          //   );
-          //   // ラウンドごとの選択
-          //   Qualtrics.SurveyEngine.setJSEmbeddedData(
-          //     "pd_history_json",
-          //     JSON.stringify(history)
-          //   );
-          // }
+          qSet("pd_prediction_json", predictionHistory);
+          qSet("pd_choice_json", choiceHistory);
+          qSet("pd_emotion_json", emotionHistory);
+          qSet("pd_history_json", history);
+
           return;
         }
         const serverStage = s.stage || "choice";
@@ -361,19 +367,9 @@ export function startGame(channel) {
             myPayoff,
             myTotal,
           });
-          if (window.Qualtrics && Qualtrics.SurveyEngine) {
-            // Qualtrics.SurveyEngine.setJSEmbeddedData(
-            //   "pd_total",
-            //   String(myTotal)
-            // );
-            // Qualtrics.SurveyEngine.setJSEmbeddedData(
-            //   "pd_history_json",
-            //   JSON.stringify(history)
-            // );
-            console.log("Saving total & history", myTotal, history);
-          } else {
-            console.warn("Qualtrics not found when saving total/history");
-          }
+
+          qSet("pd_total", String(myTotal));
+          qSet("pd_history_json", history);
 
           // このラウンドの感情入力を開始
           if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7) {
@@ -456,6 +452,7 @@ export function startGame(channel) {
 
     const v = Number(predSlider.value);
     predictionHistory.push({ round: currentRound, value: v });
+    qSet("pd_prediction_json", predictionHistory);
     predictionDoneRound = currentRound;
 
     // 送信
@@ -489,6 +486,7 @@ export function startGame(channel) {
     const v7 = Number(emo7.value);
 
     emotionHistory.push({ round: currentRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 });
+    qSet("pd_emotion_json", emotionHistory);
 
     // UIを閉じる（心的状態は「グレーアウト」にする）
     setGray(emoUI, true);
