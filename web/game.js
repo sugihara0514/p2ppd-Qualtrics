@@ -232,10 +232,12 @@ export function startGame(channel) {
     setChoiceButtonsEnabled(false);
     hasChosenThisRound = true;
 
-    // 反応時間（確定タイミング基準にするならここが自然）
+    // 反応時間
     if (roundStartAt != null) {
       pendingRtMs = performance.now() - roundStartAt;
       rtList.push({ round: currentRound, rtMs: pendingRtMs });
+      qSet("pd_decision_rt_json", rtList);  // 各ラウンドで都度保存
+      roundStartAt = null;
     }
 
     status.textContent = `Round ${currentRound}/10: 確定=${choice}。相手の結果待ち…`;
@@ -296,6 +298,8 @@ export function startGame(channel) {
           waitingEmotion          = false;
           waitingPrediction       = false;
           predictionDoneRound     = null;
+          roundStartAt = null;
+          pendingRtMs = null;
         }
 
         // ===== フェーズごとのUI制御 =====
