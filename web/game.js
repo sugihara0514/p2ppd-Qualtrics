@@ -277,7 +277,6 @@ export function startGame(channel) {
           setButtonsEnabled(false);
 
           qSet("pd_prediction_json", predictionHistory);
-          qSet("pd_choice_json", choiceHistory);
           qSet("pd_emotion_json", emotionHistory);
           qSet("pd_history_json", history);
 
