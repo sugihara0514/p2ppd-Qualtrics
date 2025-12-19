@@ -35,6 +35,80 @@ export function startGame(channel) {
     roundEl.textContent = String(currentRound);
   }
 
+    // ===== Typewriter（テキストを少しずつ流す）=====
+  const TEXT_ADD_SPEED = 30; // 1文字あたり(ms) 好みで調整
+
+  const tw = {
+    timer: null,
+    target: "",
+    current: "",
+    typing: false,
+    lastRequested: null,
+  };
+
+  function setStatus(text, opts = {}) {
+    if (!status) return;
+
+    const {
+      typewriter = true,
+      speed = TEXT_ADD_SPEED,
+      lockNextWhileTyping = false,
+      force = false,
+    } = opts;
+
+    // ポーリングで同じ文を何度も流さないためのガード
+    if (!force && tw.lastRequested === text) return;
+    tw.lastRequested = text;
+
+    // 前のタイプ中を停止
+    if (tw.timer) {
+      clearInterval(tw.timer);
+      tw.timer = null;
+    }
+    tw.target = String(text);
+
+    // すぐ出すモード
+    if (!typewriter) {
+      tw.typing = false;
+      status.textContent = tw.target;
+      // typing が終わった扱いなので next 状態を戻す
+      updateNextEnabled?.();
+      return;
+    }
+
+    // タイプ開始
+    tw.typing = true;
+    tw.current = "";
+    status.textContent = "";
+
+    if (lockNextWhileTyping && nextButton) nextButton.disabled = true;
+
+    tw.timer = setInterval(() => {
+      if (tw.current.length < tw.target.length) {
+        tw.current += tw.target[tw.current.length];
+        status.textContent = tw.current;
+      } else {
+        clearInterval(tw.timer);
+        tw.timer = null;
+        tw.typing = false;
+        updateNextEnabled?.();
+      }
+    }, speed);
+  }
+
+  function finishTyping() {
+    if (!tw.typing) return;
+    if (tw.timer) clearInterval(tw.timer);
+    tw.timer = null;
+    tw.typing = false;
+    status.textContent = tw.target;
+    updateNextEnabled?.();
+  }
+
+  // 任意：テキスト部分をクリックで全文表示
+  status?.addEventListener("click", finishTyping);
+
+
   // ===== UI 表示制御（honnbann 1.html の unvisible/disable/grayout 前提） =====
   const ANIM_MS = 1000; // time_animation と同じ
 
@@ -172,7 +246,6 @@ export function startGame(channel) {
     renderRound();
 
     // 最初は「相手の選択予測」フェーズ
-    status.textContent = `Round ${currentRound}/10: 相手が何を選ぶか予測してください`;
     setButtonsEnabled(false);
     canChoose = false;
 
@@ -183,24 +256,27 @@ export function startGame(channel) {
     startPolling();
   }).catch(err => {
     console.error("game/join failed", err);
-    status.textContent = "ゲーム初期化に失敗しました";
+    setStatus("ゲーム初期化に失敗しました", { typewriter:false, force:true });
   });
 
   btnGreen.onclick = () => {
     if (!canChoose) return;
     pendingChoice = "C";
-    status.textContent = `Round ${currentRound}/10: 緑（C）を選択中。次へで確定。`;
+    setStatus(`Round ${currentRound}/10: 緑（C）を選択中。次へで確定。`, { typewriter:true });
     updateNextEnabled();
   };
 
   btnBlue.onclick = () => {
     if (!canChoose) return;
     pendingChoice = "D";
-    status.textContent = `Round ${currentRound}/10: 青（D）を選択中。次へで確定。`;
+    setStatus(`Round ${currentRound}/10: 青（D）を選択中。次へで確定。`, { typewriter:true });
     updateNextEnabled();
   };
 
   nextButton.onclick = async () => {
+    if (tw.typing) { 
+      finishTyping(); 
+    }
     // 予測入力中なら予測確定
     if (waitingPrediction) {
       await submitPrediction();
@@ -221,7 +297,7 @@ export function startGame(channel) {
   async function submitChoice() {
     if (!canChoose) return;
     if (!pendingChoice) {
-      status.textContent = `Round ${currentRound}/10: 緑か青を選んでください。`;
+      setStatus(`Round ${currentRound}/10: 緑か青を選んでください。`, { typewriter:false, force:true });
       return;
     }
 
@@ -240,8 +316,7 @@ export function startGame(channel) {
       roundStartAt = null;
     }
 
-    status.textContent = `Round ${currentRound}/10: 確定=${choice}。相手の結果待ち…`;
-
+    setStatus(`Round ${currentRound}/10: 確定=${choice}。相手の結果待ち…`, { typewriter:false, force:true });
     const body = { channel, playerId: pid, round: currentRound, choice };
     const resp = await fetch(`${API_BASE}/game/choice`, {
       method: "POST",
@@ -255,7 +330,7 @@ export function startGame(channel) {
 
     if (!resp.ok) {
       console.error("choice HTTP error", resp.status, data || text);
-      status.textContent = `送信エラー(${resp.status}). ページ再読み込みしてください。`;
+      setStatus(`送信エラー(${resp.status}). ページ再読み込みしてください。`, { typewriter:false, force:true });
       return;
     }
 
@@ -275,7 +350,7 @@ export function startGame(channel) {
         if (s.over) {
           clearInterval(pollTimer);
           const my = s.myTotal ?? 0;
-          status.textContent = `終了！あなたの合計=${my}`;
+          setStatus(`終了！あなたの合計=${my}`, { typewriter:false, force:true });
           setButtonsEnabled(false);
 
           qSet("pd_prediction_json", predictionHistory);
@@ -309,14 +384,20 @@ export function startGame(channel) {
           if (predictionDoneRound !== currentRound) {
             // まだこのラウンドで自分の予測を送っていない
             if (!waitingPrediction && predUI) {
-              status.textContent = `Round ${currentRound}/10: 相手が何を選ぶか予測してください`;
+              // setStatus(`Round ${currentRound}/10: 相手が何を選ぶか予測してください`, {
+              //   typewriter: true,
+              //   speed: TEXT_ADD_SPEED,
+              //   lockNextWhileTyping: false, // 必要なら true
+              // });
               setButtonsEnabled(false);
               canChoose = false;
               showPredictionUI();  // このタイミングで1回だけ開く
             }
           } else {
             // 自分はもう予測済み → 相手待ち表示に固定
-            status.textContent = `Round ${currentRound}/10: 相手の予測が終わるのを待っています…`;
+            setStatus(`Round ${currentRound}/10: 相手の予測が終わるのを待っています…`, {
+              typewriter: false
+            });
             setButtonsEnabled(false);
             canChoose = false;
           }
@@ -325,7 +406,10 @@ export function startGame(channel) {
         // 2) 選択フェーズ：C/D ボタンを有効化
         if (serverStage === "choice") {
           if (!hasChosenThisRound && !canChoose) {
-            status.textContent = `Round ${currentRound}/10:  緑か青を選び、次へで確定してください`;
+            setStatus(`Round ${currentRound}/10: 緑か青を選び、次へで確定してください`, {
+              typewriter: true,
+              force: true
+            });
             
             // choice表示
             if (predUI) fadeOutDisable(predUI);
@@ -394,9 +478,10 @@ export function startGame(channel) {
             emo6.value = "0";
             emo7.value = "0";
 
-            status.textContent =
-            `${lastResultText}\n` +
-            `今の感情（評価）を入力して「次へ」で確定してください。`;            
+            setStatus(
+              `${lastResultText}\n今の感情（評価）を入力して「次へ」で確定してください。`,
+              { typewriter:true, force:true }
+            );          
             updateNextEnabled();
           }
         }
@@ -412,13 +497,15 @@ export function startGame(channel) {
   }
 
   function setChoiceButtonsEnabled(on) {
-    btnGreen.disabled = !on;
-    btnBlue.disabled  = !on;
+    if (btnGreen) btnGreen.disabled = !on;
+    if (btnBlue) btnBlue.disabled = !on;
     updateNextEnabled();
   }
 
   function updateNextEnabled() {
     // choice中は「仮決定がある時だけ next 有効」
+    if (!nextButton) return;
+
     if (canChoose) {
       nextButton.disabled = !pendingChoice;
       return;
@@ -444,8 +531,7 @@ export function startGame(channel) {
     fadeInEnable(nextButton);
 
     predSlider.value = predSlider.defaultValue || "0";
-    status.textContent = `Round ${currentRound}/10: 相手が何を選ぶか予測してください`;
-
+    setStatus(`Round ${currentRound}/10: 相手が何を選ぶか予測してください`, { typewriter:true, force:true });
     updateNextEnabled();
   }
 
@@ -472,7 +558,7 @@ export function startGame(channel) {
     // 相手待ち表示：予測UIは閉じる / next も隠す
     fadeOutDisable(predUI);
     hideBase(nextButton);
-    status.textContent = `Round ${currentRound}/10: 相手の予測が終わるのを待っています…`;
+    setStatus(`Round ${currentRound}/10: 相手の予測が終わるのを待っています…`, { typewriter:false, force:true });
     updateNextEnabled();
   }
 
@@ -506,7 +592,7 @@ export function startGame(channel) {
       console.error("game/emotion failed", e);
     }
 
-    status.textContent = `Round ${currentRound}/10: 相手の感情入力が終わるのを待っています…`;
+    setStatus(`Round ${currentRound}/10: 相手の感情入力が終わるのを待っています…`, { typewriter:false, force:true });
     updateNextEnabled();
   }
 }
