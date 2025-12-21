@@ -5,34 +5,34 @@ export function startGame(channel) {
   if (ui) ui.style.display = "block";
 
   const status = document.getElementById("dynamicText");
-  // 次へボタン（predictNext/emotionNext/choice確定を全部これに統一）
-  const nextButton = document.getElementById("nextButton");
+  // 次へボタン
+  const nextButton = document.getElementById("next_button");
 
   // 選択関連 DOM
-  const btnGreen = document.getElementById("greenButton");
-  const btnBlue = document.getElementById("blueButton");
-  const choiceUI = document.getElementById("container_choice_button");
+  const green_button = document.getElementById("green_button");
+  const blue_button = document.getElementById("blue_button");
+  const choiceUI = document.getElementById("choice_button_container");
 
   //予測スライダー関連 DOM
-  const predUI    = document.getElementById("coop_slider_container_act");
-  const predSlider = document.getElementById("coop_Slider");
+  const predUI = document.getElementById("pred_slider_container");
+  const pred_slider = document.getElementById("pred_slider");
 
   // 感情スライダー関連 DOM
-  const emoUI = document.getElementById("mental_sliders") || document.querySelector(".vertical-sliders");  
-  const emo1    = document.getElementById("stress_Slider");
-  const emo2    = document.getElementById("emotionalvalue_Slider");
-  const emo3    = document.getElementById("moralburden_Slider");
-  const emo4    = document.getElementById("fairness_Slider");
-  const emo5    = document.getElementById("trust_Slider");
-  const emo6    = document.getElementById("autonomy_Slider");
-  const emo7    = document.getElementById("competence_Slider");
+  const emoUI = document.getElementById("mental_sliderber_container") || document.querySelector(".vertical-sliders");  
+  const emo1    = document.getElementById("stress_slider");
+  const emo2    = document.getElementById("emotionalvalue_slider");
+  const emo3    = document.getElementById("moralburden_slider");
+  const emo4    = document.getElementById("fairness_slider");
+  const emo5    = document.getElementById("trust_slider");
+  const emo6    = document.getElementById("autonomy_slider");
+  const emo7    = document.getElementById("competence_slider");
 
   // ラウンド数
-  const roundEl = document.getElementById("round_N");
+  const round_N = document.getElementById("round_N");
 
   function renderRound() {
-    if (!roundEl) return;
-    roundEl.textContent = String(currentRound);
+    if (!round_N) return;
+    round_N.textContent = String(currentRound);
   }
 
     // ===== Typewriter（テキストを少しずつ流す）=====
@@ -205,6 +205,15 @@ export function startGame(channel) {
     return false;
   }
 
+  // round付きで Embedded Data をまとめて保存
+  function qSetRound(round, obj, prefix = "pd") {
+    if (!obj) return;
+    const r = String(round);
+    for (const [k, v] of Object.entries(obj)) {
+      qSet(`${prefix}_r${r}_${k}`, v);
+    }
+  }
+
   if (window.Qualtrics && Qualtrics.SurveyEngine) {
     qSet("pd_player_id", String(pid));
   }
@@ -217,7 +226,7 @@ export function startGame(channel) {
   let canChoose = false;
   let hasChosenThisRound = false;
   let pollTimer = null;
-  const history = []; // {round, me, opp, myPayoff, myTotal}
+  const history = []; // {round, me, opp, youPayoff, youTotal}
 
   let pendingChoice = null; // "C" or "D"（仮決定）
 
@@ -259,14 +268,14 @@ export function startGame(channel) {
     setStatus("ゲーム初期化に失敗しました", { typewriter:false, force:true });
   });
 
-  btnGreen.onclick = () => {
+  green_button.onclick = () => {
     if (!canChoose) return;
     pendingChoice = "C";
     setStatus(`Round ${currentRound}/10: 緑（C）を選択中。次へで確定。`, { typewriter:true });
     updateNextEnabled();
   };
 
-  btnBlue.onclick = () => {
+  blue_button.onclick = () => {
     if (!canChoose) return;
     pendingChoice = "D";
     setStatus(`Round ${currentRound}/10: 青（D）を選択中。次へで確定。`, { typewriter:true });
@@ -313,6 +322,7 @@ export function startGame(channel) {
       pendingRtMs = performance.now() - roundStartAt;
       rtList.push({ round: currentRound, rtMs: pendingRtMs });
       qSet("pd_decision_rt_json", rtList);  // 各ラウンドで都度保存
+      qSetRound(currentRound, { rtMs: pendingRtMs });
       roundStartAt = null;
     }
 
@@ -349,7 +359,7 @@ export function startGame(channel) {
         // 終了
         if (s.over) {
           clearInterval(pollTimer);
-          const my = s.myTotal ?? 0;
+          const my = s.youTotal ?? 0;
           setStatus(`終了！あなたの合計=${my}`, { typewriter:false, force:true });
           setButtonsEnabled(false);
 
@@ -437,26 +447,34 @@ export function startGame(channel) {
           lastResultRoundHandled = currentRound;  // このラウンドはもう処理したマーク
 
           const pair = Object.entries(s.lastResult.choices); // [[pid, "C"|"D"], ...]
-          const meChoice = s.lastResult.choices[pid];
+          const youChoice = s.lastResult.choices[pid];
           const oppEntry = pair.find(([id]) => id !== pid);
           const oppChoice = oppEntry ? oppEntry[1] : "?";
-          const myPayoff = s.lastResult.payoffs[pid];
-          const myTotal = s.lastResult.totals[pid];
+          const youPayoff = s.lastResult.payoffs[pid];
+          const youTotal = s.lastResult.totals[pid];
 
-          // status.textContent = `Round ${currentRound}/10 結果: あなた=${meChoice}, 相手=${oppChoice} ⇒ 利得 ${myPayoff}（累計 ${myTotal}）`;
-          lastResultText = `Round ${currentRound}/10 結果: あなた=${meChoice}, 相手=${oppChoice} ⇒ 利得 ${myPayoff}（累計 ${myTotal}）`;
+          // status.textContent = `Round ${currentRound}/10 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
+          lastResultText = `Round ${currentRound}/10 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
 
           // 履歴に追加してEmbedded Dataにも反映（途中経過も欲しければ）
           history.push({
             round: currentRound,
-            me: meChoice,
+            you: youChoice,
             opp: oppChoice,
-            myPayoff,
-            myTotal,
+            youPayoff,
+            youTotal,
           });
 
-          qSet("pd_total", String(myTotal));
+          qSet("pd_total", String(youTotal));
           qSet("pd_history_json", history);
+
+          // 個別保存（結果系）
+          qSetRound(currentRound, {
+            youChoice,
+            oppChoice,
+            youPayoff,
+            youTotal,
+          });
 
           // このラウンドの感情入力を開始
           if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7) {
@@ -491,14 +509,14 @@ export function startGame(channel) {
     }, 800); // 800ms間隔ポーリング
   }
   function setButtonsEnabled(on) {
-    if (btnGreen) btnGreen.disabled = !on;
-    if (btnBlue) btnBlue.disabled = !on;
+    if (green_button) green_button.disabled = !on;
+    if (blue_button) blue_button.disabled = !on;
     if (nextButton) nextButton.disabled = !on;
   }
 
   function setChoiceButtonsEnabled(on) {
-    if (btnGreen) btnGreen.disabled = !on;
-    if (btnBlue) btnBlue.disabled = !on;
+    if (green_button) green_button.disabled = !on;
+    if (blue_button) blue_button.disabled = !on;
     updateNextEnabled();
   }
 
@@ -519,7 +537,7 @@ export function startGame(channel) {
   }
 
   function showPredictionUI() {
-    if (!predUI || !predSlider) return;
+    if (!predUI || !pred_slider) return;
 
     waitingPrediction = true;
 
@@ -530,7 +548,7 @@ export function startGame(channel) {
     // 予測入力中は next を見せる（有効/無効は updateNextEnabled が管理）
     fadeInEnable(nextButton);
 
-    predSlider.value = predSlider.defaultValue || "0";
+    pred_slider.value = pred_slider.defaultValue || "0";
     setStatus(`Round ${currentRound}/10: 相手が何を選ぶか予測してください`, { typewriter:true, force:true });
     updateNextEnabled();
   }
@@ -539,9 +557,11 @@ export function startGame(channel) {
     if (!waitingPrediction) return;
     waitingPrediction = false;
 
-    const v = Number(predSlider.value);
+    const v = Number(pred_slider.value);
     predictionHistory.push({ round: currentRound, value: v });
     qSet("pd_prediction_json", predictionHistory);
+    // 個別保存（ラウンド別）
+    qSetRound(currentRound, { prediction: v });
     predictionDoneRound = currentRound;
 
     // 送信
@@ -576,6 +596,18 @@ export function startGame(channel) {
 
     emotionHistory.push({ round: currentRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 });
     qSet("pd_emotion_json", emotionHistory);
+
+     // 個別保存（ラウンド別・感情）
+    qSetRound(currentRound, {
+      emo1: v1,
+      emo2: v2,
+      emo3: v3,
+      emo4: v4,
+      emo5: v5,
+      emo6: v6,
+      emo7: v7,
+      emotionAt: Date.now(), // 任意
+    });
 
     // UIを閉じる（心的状態は「グレーアウト」にする）
     setGray(emoUI, true);
