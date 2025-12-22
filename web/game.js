@@ -18,7 +18,7 @@ export function startGame(channel) {
   const pred_slider = document.getElementById("pred_slider");
 
   // 感情スライダー関連 DOM
-  const emoUI = document.getElementById("mental_sliderber_container") || document.querySelector(".vertical-sliders");  
+  const emoUI = document.getElementById("mental_slider_container") || document.querySelector(".vertical-sliders");  
   const emo1    = document.getElementById("stress_slider");
   const emo2    = document.getElementById("emotionalvalue_slider");
   const emo3    = document.getElementById("moralburden_slider");
