@@ -321,7 +321,7 @@ export function startGame(channel) {
     if (roundStartAt != null) {
       pendingRtMs = performance.now() - roundStartAt;
       rtList.push({ round: currentRound, rtMs: pendingRtMs });
-      qSet("pd_decision_rt_json", rtList);  // 各ラウンドで都度保存
+      // qSet("pd_decision_rt_json", rtList);  // 各ラウンドで都度保存
       qSetRound(currentRound, { rtMs: pendingRtMs });
       roundStartAt = null;
     }
@@ -363,9 +363,9 @@ export function startGame(channel) {
           setStatus(`終了！あなたの合計=${my}`, { typewriter:false, force:true });
           setButtonsEnabled(false);
 
-          qSet("pd_prediction_json", predictionHistory);
-          qSet("pd_emotion_json", emotionHistory);
-          qSet("pd_history_json", history);
+          // qSet("pd_prediction_json", predictionHistory);
+          // qSet("pd_emotion_json", emotionHistory);
+          // qSet("pd_history_json", history);
 
           return;
         }
@@ -465,8 +465,8 @@ export function startGame(channel) {
             youTotal,
           });
 
-          qSet("pd_total", String(youTotal));
-          qSet("pd_history_json", history);
+          // qSet("pd_total", String(youTotal));
+          // qSet("pd_history_json", history);
 
           // 個別保存（結果系）
           qSetRound(currentRound, {
@@ -559,7 +559,7 @@ export function startGame(channel) {
 
     const v = Number(pred_slider.value);
     predictionHistory.push({ round: currentRound, value: v });
-    qSet("pd_prediction_json", predictionHistory);
+    // qSet("pd_prediction_json", predictionHistory);
     // 個別保存（ラウンド別）
     qSetRound(currentRound, { prediction: v });
     predictionDoneRound = currentRound;
@@ -595,7 +595,7 @@ export function startGame(channel) {
     const v7 = Number(emo7.value);
 
     emotionHistory.push({ round: currentRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 });
-    qSet("pd_emotion_json", emotionHistory);
+    // qSet("pd_emotion_json", emotionHistory);
 
      // 個別保存（ラウンド別・感情）
     qSetRound(currentRound, {
