@@ -359,8 +359,13 @@ export function startGame(channel) {
         // 終了
         if (s.over) {
           clearInterval(pollTimer);
-          const my = s.youTotal ?? 0;
-          setStatus(`終了！あなたの合計=${my}`, { typewriter:false, force:true });
+          // 最終ラウンドの結果が入っていればそれを採用
+          const finalTotal =
+            s.lastResult?.totals?.[pid] ??
+            history[history.length - 1]?.youTotal ??
+            0;
+            
+          setStatus(`終了！あなたの合計=${finalTotal}`, { typewriter:false, force:true });
           setButtonsEnabled(false);
 
           // qSet("pd_prediction_json", predictionHistory);
