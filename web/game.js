@@ -30,12 +30,56 @@ export function startGame(channel) {
   // ラウンド数
   const round_N = document.getElementById("round_N");
 
+  // 合計得点表示
+  const opp_total_score = document.getElementById("opp_total_score");
+  const you_total_score = document.getElementById("you_total_score");
+
   function renderRound() {
     if (!round_N) return;
     round_N.textContent = String(currentRound);
   }
 
-    // ===== Typewriter（テキストを少しずつ流す）=====
+  // ===== 利得表の矩形枠 =====
+  const rect_you_blue  = document.getElementById("rectangle_you_blue");
+  const rect_you_green = document.getElementById("rectangle_you_green");
+  const rect_opp_green = document.getElementById("rectangle_opp_green");
+  const rect_opp_blue  = document.getElementById("rectangle_opp_blue");
+
+  // 自分の枠を「確定して固定」しているか
+  let lockedYouRect = null; // "C" or "D" or null
+
+  function showEl(el) { if (el) el.classList.remove("unvisible"); }
+  function hideEl(el) { if (el) el.classList.add("unvisible"); }
+
+  function hideAllRects() {
+    hideEl(rect_you_blue);
+    hideEl(rect_you_green);
+    hideEl(rect_opp_green);
+    hideEl(rect_opp_blue);
+  }
+
+  function showYouRect(choice) {
+    // choice: "C"(緑) or "D"(青)
+    hideEl(rect_you_blue);
+    hideEl(rect_you_green);
+    if (choice === "C") showEl(rect_you_green);
+    if (choice === "D") showEl(rect_you_blue);
+  }
+
+  function showOppRect(choice) {
+    hideEl(rect_opp_green);
+    hideEl(rect_opp_blue);
+    if (choice === "C") showEl(rect_opp_green);
+    if (choice === "D") showEl(rect_opp_blue);
+  }
+
+  function resetRectsForNewRound() {
+    lockedYouRect = null;
+    hideAllRects();
+  }
+
+
+  // ===== Typewriter（テキストを少しずつ流す）=====
   const TEXT_ADD_SPEED = 30; // 1文字あたり(ms) 好みで調整
 
   const tw = {
@@ -303,6 +347,31 @@ export function startGame(channel) {
     }
   };
 
+  // ホバー中だけ表示（未確定時）
+  green_button?.addEventListener("mouseenter", () => {
+    if (!canChoose) return;
+    if (lockedYouRect) return;        // 確定後は固定表示なのでホバー無視
+    showYouRect("C");
+  });
+  green_button?.addEventListener("mouseleave", () => {
+    if (!canChoose) return;
+    if (lockedYouRect) return;
+    // 未確定なら消す（pendingChoice を残しているなら「選択中は残す」でもOK）
+    hideEl(rect_you_green);
+  });
+
+  blue_button?.addEventListener("mouseenter", () => {
+    if (!canChoose) return;
+    if (lockedYouRect) return;
+    showYouRect("D");
+  });
+  blue_button?.addEventListener("mouseleave", () => {
+    if (!canChoose) return;
+    if (lockedYouRect) return;
+    hideEl(rect_you_blue);
+  });
+
+
   async function submitChoice() {
     if (!canChoose) return;
     if (!pendingChoice) {
@@ -312,6 +381,10 @@ export function startGame(channel) {
 
     const choice = pendingChoice;
     pendingChoice = null;
+
+     // 自分の枠を確定・固定表示
+    lockedYouRect = choice;
+    showYouRect(choice);
 
     canChoose = false;
     setChoiceButtonsEnabled(false);
@@ -390,6 +463,8 @@ export function startGame(channel) {
           predictionDoneRound     = null;
           roundStartAt = null;
           pendingRtMs = null;
+
+          resetRectsForNewRound(); // 枠リセット
         }
 
         // ===== フェーズごとのUI制御 =====
@@ -453,10 +528,20 @@ export function startGame(channel) {
 
           const pair = Object.entries(s.lastResult.choices); // [[pid, "C"|"D"], ...]
           const youChoice = s.lastResult.choices[pid];
+
           const oppEntry = pair.find(([id]) => id !== pid);
+          const oppId = oppEntry ? oppEntry[0] : null;
           const oppChoice = oppEntry ? oppEntry[1] : "?";
+
           const youPayoff = s.lastResult.payoffs[pid];
           const youTotal = s.lastResult.totals[pid];
+          const oppTotal = (oppId && s.lastResult.totals) ? s.lastResult.totals[oppId] : 0;  // 相手の合計
+
+          if (you_total_score) you_total_score.textContent = String(youTotal ?? 0);
+          if (opp_total_score) opp_total_score.textContent = String(oppTotal ?? 0);
+
+          // 相手の枠を表示（確定後）
+          showOppRect(oppChoice);
 
           // status.textContent = `Round ${currentRound}/10 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
           lastResultText = `Round ${currentRound}/10 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
@@ -470,7 +555,7 @@ export function startGame(channel) {
             youTotal,
           });
 
-          // qSet("pd_total", String(youTotal));
+          qSet("pd_total", String(youTotal));
           // qSet("pd_history_json", history);
 
           // 個別保存（結果系）
