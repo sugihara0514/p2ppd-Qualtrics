@@ -75,6 +75,7 @@ export function startGame(channel) {
 
   function resetRectsForNewRound() {
     lockedYouRect = null;
+    pendingChoice = null;
     hideAllRects();
   }
 
@@ -315,14 +316,16 @@ export function startGame(channel) {
   green_button.onclick = () => {
     if (!canChoose) return;
     pendingChoice = "C";
-    setStatus(`Round ${currentRound}/10: 緑（C）を選択中。次へで確定。`, { typewriter:true });
+    showYouRect("C");
+    setStatus(`Round ${currentRound}/10: 緑を選択中。次へで確定。`, { typewriter:true });
     updateNextEnabled();
   };
 
   blue_button.onclick = () => {
     if (!canChoose) return;
     pendingChoice = "D";
-    setStatus(`Round ${currentRound}/10: 青（D）を選択中。次へで確定。`, { typewriter:true });
+    showYouRect("D");
+    setStatus(`Round ${currentRound}/10: 青を選択中。次へで確定。`, { typewriter:true });
     updateNextEnabled();
   };
 
@@ -354,9 +357,10 @@ export function startGame(channel) {
     showYouRect("C");
   });
   green_button?.addEventListener("mouseleave", () => {
-    if (!canChoose) return;
-    if (lockedYouRect) return;
-    // 未確定なら消す（pendingChoice を残しているなら「選択中は残す」でもOK）
+    // pendingChoice が "C" の間は消さない（クリック後の保持）
+    if (pendingChoice === "C") return;
+    // 確定ロック後も消さない
+    if (lockedYouRect === "C") return;
     hideEl(rect_you_green);
   });
 
@@ -366,8 +370,8 @@ export function startGame(channel) {
     showYouRect("D");
   });
   blue_button?.addEventListener("mouseleave", () => {
-    if (!canChoose) return;
-    if (lockedYouRect) return;
+    if (pendingChoice === "D") return;
+    if (lockedYouRect === "D") return;
     hideEl(rect_you_blue);
   });
 
@@ -380,11 +384,12 @@ export function startGame(channel) {
     }
 
     const choice = pendingChoice;
-    pendingChoice = null;
 
      // 自分の枠を確定・固定表示
     lockedYouRect = choice;
     showYouRect(choice);
+
+    pendingChoice = null;
 
     canChoose = false;
     setChoiceButtonsEnabled(false);
@@ -464,7 +469,7 @@ export function startGame(channel) {
           roundStartAt = null;
           pendingRtMs = null;
 
-          resetRectsForNewRound(); // 枠リセット
+          resetRectsForNewRound(); // 枠リセットhideAllRects
         }
 
         // ===== フェーズごとのUI制御 =====
