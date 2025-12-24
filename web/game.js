@@ -357,10 +357,21 @@ export function startGame(channel) {
     showYouRect("C");
   });
   green_button?.addEventListener("mouseleave", () => {
-    // pendingChoice が "C" の間は消さない（クリック後の保持）
-    if (pendingChoice === "C") return;
-    // 確定ロック後も消さない
-    if (lockedYouRect === "C") return;
+    if (!canChoose) return;
+
+    // 確定後は固定表示（実質何もしないでOKだが、念のため整形）
+    if (lockedYouRect) {
+      showYouRect(lockedYouRect);
+      return;
+    }
+
+    // クリックで選択中なら、その選択（C/D）を表示し直す
+    if (pendingChoice) {
+      showYouRect(pendingChoice);
+      return;
+    }
+
+    // 何も選んでいないなら消す
     hideEl(rect_you_green);
   });
 
@@ -370,8 +381,21 @@ export function startGame(channel) {
     showYouRect("D");
   });
   blue_button?.addEventListener("mouseleave", () => {
-    if (pendingChoice === "D") return;
-    if (lockedYouRect === "D") return;
+    if (!canChoose) return;
+
+    // 確定後は固定表示（実質何もしないでOKだが、念のため整形）
+    if (lockedYouRect) {
+      showYouRect(lockedYouRect);
+      return;
+    }
+
+    // クリックで選択中なら、その選択（C/D）を表示し直す
+    if (pendingChoice) {
+      showYouRect(pendingChoice);
+      return;
+    }
+
+    // 何も選んでいないなら消す
     hideEl(rect_you_blue);
   });
 
