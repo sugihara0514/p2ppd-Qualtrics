@@ -28,7 +28,7 @@ export function startGame(channel) {
   const emo7    = document.getElementById("competence_slider");
 
   // ラウンド数
-  const MAX_ROUNDS = 20;
+  const MAX_ROUNDS = 5; // 本番は20
   const round_N = document.getElementById("round_N");
 
   // 合計得点表示

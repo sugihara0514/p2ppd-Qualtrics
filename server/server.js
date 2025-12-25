@@ -6,7 +6,7 @@ import { v4 as uuid } from "uuid";
 import pkg from "agora-access-token";
 const { RtcTokenBuilder, RtcRole } = pkg;
 
-const MAX_ROUNDS = 20;
+const MAX_ROUNDS = 5; // 本番は20
 
 // QualtricsのURLを許可する
 const allowedOrigin = [
