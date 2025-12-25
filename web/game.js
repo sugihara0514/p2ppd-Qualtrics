@@ -28,6 +28,7 @@ export function startGame(channel) {
   const emo7    = document.getElementById("competence_slider");
 
   // ラウンド数
+  const MAX_ROUNDS = 20;
   const round_N = document.getElementById("round_N");
 
   // 合計得点表示
@@ -230,6 +231,8 @@ export function startGame(channel) {
     localStorage.setItem("pd_player_id", pid);
   }
 
+  let oppId = null; // 相手のID
+
   // Qualtrics側に保存
   function qSet(key, val) {
     try {
@@ -317,7 +320,7 @@ export function startGame(channel) {
     if (!canChoose) return;
     pendingChoice = "C";
     showYouRect("C");
-    setStatus(`Round ${currentRound}/10: 緑を選択中。次へで確定。`, { typewriter:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑を選択中。次へで確定。`, { typewriter:true });
     updateNextEnabled();
   };
 
@@ -325,7 +328,7 @@ export function startGame(channel) {
     if (!canChoose) return;
     pendingChoice = "D";
     showYouRect("D");
-    setStatus(`Round ${currentRound}/10: 青を選択中。次へで確定。`, { typewriter:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 青を選択中。次へで確定。`, { typewriter:true });
     updateNextEnabled();
   };
 
@@ -403,7 +406,7 @@ export function startGame(channel) {
   async function submitChoice() {
     if (!canChoose) return;
     if (!pendingChoice) {
-      setStatus(`Round ${currentRound}/10: 緑か青を選んでください。`, { typewriter:false, force:true });
+      setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑か青を選んでください。`, { typewriter:false, force:true });
       return;
     }
 
@@ -428,7 +431,7 @@ export function startGame(channel) {
       roundStartAt = null;
     }
 
-    setStatus(`Round ${currentRound}/10: 確定=${choice}。相手の結果待ち…`, { typewriter:false, force:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 確定=${choice}。相手の結果待ち…`, { typewriter:false, force:true });
     const body = { channel, playerId: pid, round: currentRound, choice };
     const resp = await fetch(`${API_BASE}/game/choice`, {
       method: "POST",
@@ -503,7 +506,7 @@ export function startGame(channel) {
           if (predictionDoneRound !== currentRound) {
             // まだこのラウンドで自分の予測を送っていない
             if (!waitingPrediction && predUI) {
-              // setStatus(`Round ${currentRound}/10: 相手が何を選ぶか予測してください`, {
+              // setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手が何を選ぶか予測してください`, {
               //   typewriter: true,
               //   speed: TEXT_ADD_SPEED,
               //   lockNextWhileTyping: false, // 必要なら true
@@ -514,7 +517,7 @@ export function startGame(channel) {
             }
           } else {
             // 自分はもう予測済み → 相手待ち表示に固定
-            setStatus(`Round ${currentRound}/10: 相手の予測が終わるのを待っています…`, {
+            setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の予測が終わるのを待っています…`, {
               typewriter: false
             });
             setButtonsEnabled(false);
@@ -525,7 +528,7 @@ export function startGame(channel) {
         // 2) 選択フェーズ：C/D ボタンを有効化
         if (serverStage === "choice") {
           if (!hasChosenThisRound && !canChoose) {
-            setStatus(`Round ${currentRound}/10: 緑か青を選び、次へで確定してください`, {
+            setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑か青を選び、次へで確定してください`, {
               typewriter: true,
               force: true
             });
@@ -559,12 +562,17 @@ export function startGame(channel) {
           const youChoice = s.lastResult.choices[pid];
 
           const oppEntry = pair.find(([id]) => id !== pid);
-          const oppId = oppEntry ? oppEntry[0] : null;
+          const oppIdNow = oppEntry ? oppEntry[0] : null;
           const oppChoice = oppEntry ? oppEntry[1] : "?";
+
+          if (oppIdNow && !oppId) {
+            oppId = oppIdNow;
+            qSet("pd_opp_id", String(oppId));  // Qualtricsに保存
+          }
 
           const youPayoff = s.lastResult.payoffs[pid];
           const youTotal = s.lastResult.totals[pid];
-          const oppTotal = (oppId && s.lastResult.totals) ? s.lastResult.totals[oppId] : 0;  // 相手の合計
+          const oppTotal = (oppIdNow && s.lastResult.totals) ? s.lastResult.totals[oppId] : 0;  // 相手の合計
 
           if (you_total_score) you_total_score.textContent = String(youTotal ?? 0);
           if (opp_total_score) opp_total_score.textContent = String(oppTotal ?? 0);
@@ -572,8 +580,8 @@ export function startGame(channel) {
           // 相手の枠を表示（確定後）
           showOppRect(oppChoice);
 
-          // status.textContent = `Round ${currentRound}/10 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
-          lastResultText = `Round ${currentRound}/10 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
+          // status.textContent = `Round ${currentRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
+          lastResultText = `Round ${currentRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
 
           // 履歴に追加してEmbedded Dataにも反映（途中経過も欲しければ）
           history.push({
@@ -668,7 +676,7 @@ export function startGame(channel) {
     fadeInEnable(nextButton);
 
     pred_slider.value = pred_slider.defaultValue || "0";
-    setStatus(`Round ${currentRound}/10: 相手が何を選ぶか予測してください`, { typewriter:true, force:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手が何を選ぶか予測してください`, { typewriter:true, force:true });
     updateNextEnabled();
   }
 
@@ -697,7 +705,7 @@ export function startGame(channel) {
     // 相手待ち表示：予測UIは閉じる / next も隠す
     fadeOutDisable(predUI);
     hideBase(nextButton);
-    setStatus(`Round ${currentRound}/10: 相手の予測が終わるのを待っています…`, { typewriter:false, force:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の予測が終わるのを待っています…`, { typewriter:false, force:true });
     updateNextEnabled();
   }
 
@@ -743,7 +751,7 @@ export function startGame(channel) {
       console.error("game/emotion failed", e);
     }
 
-    setStatus(`Round ${currentRound}/10: 相手の感情入力が終わるのを待っています…`, { typewriter:false, force:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の感情入力が終わるのを待っています…`, { typewriter:false, force:true });
     updateNextEnabled();
   }
 }

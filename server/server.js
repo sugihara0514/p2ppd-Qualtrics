@@ -6,6 +6,8 @@ import { v4 as uuid } from "uuid";
 import pkg from "agora-access-token";
 const { RtcTokenBuilder, RtcRole } = pkg;
 
+const MAX_ROUNDS = 20;
+
 // QualtricsのURLを許可する
 const allowedOrigin = [
   "https://survey.syd1.qualtrics.com", 
@@ -494,7 +496,7 @@ app.post("/game/emotion", (req, res) => {
     g.predictions.clear();
     g.choices.clear();
 
-    if (rNow >= 10) {
+    if (rNow >= MAX_ROUNDS) {
       g.over = true;
       g.stage = "done";
     } else {
