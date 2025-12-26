@@ -1,5 +1,5 @@
 // game.js
-export function startGame(channel) {
+export function startGame(channel, rtc) {
 
   const ui = document.querySelector(".container");
   if (ui) ui.style.display = "block";
@@ -31,14 +31,46 @@ export function startGame(channel) {
   const MAX_ROUNDS = 5; // 本番は20
   const round_N = document.getElementById("round_N");
 
-  // 合計得点表示
-  const opp_total_score = document.getElementById("opp_total_score");
-  const you_total_score = document.getElementById("you_total_score");
-
   function renderRound() {
     if (!round_N) return;
     round_N.textContent = String(currentRound);
   }
+
+  // 合計得点表示
+  const opp_total_score = document.getElementById("opp_total_score");
+  const you_total_score = document.getElementById("you_total_score");
+
+  // カメラマイクミュート
+  const micToggleBtn = document.getElementById("mic_button");
+  const camToggleBtn = document.getElementById("cam_button");
+
+  function renderMuteUI() {
+    if (!rtc) return;
+    const { micMuted, camMuted } = rtc.getMuteState();
+
+    if (micToggleBtn) {
+      micToggleBtn.setAttribute("aria-pressed", String(micMuted));
+      micToggleBtn.textContent = micMuted ? "🎤 Mic OFF" : "🎤 Mic ON";
+    }
+    if (camToggleBtn) {
+      camToggleBtn.setAttribute("aria-pressed", String(camMuted));
+      camToggleBtn.textContent = camMuted ? "📷 Cam OFF" : "📷 Cam ON";
+    }
+  }
+
+  micToggleBtn?.addEventListener("click", async () => {
+    if (!rtc) return;
+    await rtc.toggleMic();
+    renderMuteUI();
+  });
+
+  camToggleBtn?.addEventListener("click", async () => {
+    if (!rtc) return;
+    await rtc.toggleCam();
+    renderMuteUI();
+  });
+
+  renderMuteUI();
 
   // ===== 利得表の矩形枠 =====
   const rect_you_blue  = document.getElementById("rectangle_you_blue");
