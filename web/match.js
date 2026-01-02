@@ -63,7 +63,7 @@ export async function enterFlow(APP_ID, useToken = true) {
   }
 
   // 4) ゲーム開始
-  startGame(channel);
+  startGame(channel, rtc);
   matching = false;
 
   // ページ離脱時に leave + Cloud Recording 停止 を行うフック
