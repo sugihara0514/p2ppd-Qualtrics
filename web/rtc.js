@@ -12,9 +12,16 @@ export function createRtc(APP_ID) {
     if (mediaType === "video") user.videoTrack.play("remoteContainer");
     if (mediaType === "audio") user.audioTrack.play();
   });
-  client.on("user-unpublished", () => {
+  client.on("user-unpublished", (user, mediaType) => {
+  if (mediaType === "video") {
+    // 映像が止まったときだけ remoteContainer を消す
     document.getElementById("remoteContainer").innerHTML = '<span class="label">Remote</span>';
-  });
+  }
+  if (mediaType === "audio") {
+    // 音声が止まっても映像は消さない（必要ならUIだけ更新）
+    // 例: mic muted アイコン表示など
+  }
+});
 
   async function applyMuteState() {
     // join前に押されても安全に無視できるように
