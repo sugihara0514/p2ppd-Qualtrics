@@ -72,6 +72,50 @@ export function startGame(channel, rtc) {
 
   renderMuteUI();
 
+  // ===== 利得表（4セル）を薄くする制御 =====
+  const cellCC = document.getElementById("cell_CC");
+  const cellCD = document.getElementById("cell_CD");
+  const cellDC = document.getElementById("cell_DC");
+  const cellDD = document.getElementById("cell_DD");
+
+  const matrixCells = {
+    CC: cellCC,
+    CD: cellCD,
+    DC: cellDC,
+    DD: cellDD,
+  };
+
+  function clearMatrixHighlight() {
+    Object.values(matrixCells).forEach((el) => {
+      if (!el) return;
+      el.classList.remove("matrix_dim", "matrix_active");
+    });
+  }
+
+  // 自分の選択だけ分かっている時：選んだ列(2セル)だけ通常、反対列(2セル)を薄く
+  function highlightByYouChoice(youChoice /* "C"|"D" */) {
+    clearMatrixHighlight();
+    const keys = ["CC", "CD", "DC", "DD"];
+    keys.forEach((k) => {
+      const el = matrixCells[k];
+      if (!el) return;
+      const you = k[0]; // 1文字目があなた（C/D）
+      if (you === youChoice) el.classList.add("matrix_active");
+      else el.classList.add("matrix_dim");
+    });
+  }
+
+  // 結果が分かった時：該当1セルだけ通常、他3セルを薄く
+  function highlightByOutcome(youChoice /* "C"|"D" */, oppChoice /* "C"|"D" */) {
+    clearMatrixHighlight();
+    const key = `${youChoice}${oppChoice}`; // HTML id は cell_CC 等（あなた,相手）の順 :contentReference[oaicite:4]{index=4}
+    Object.entries(matrixCells).forEach(([k, el]) => {
+      if (!el) return;
+      if (k === key) el.classList.add("matrix_active");
+      else el.classList.add("matrix_dim");
+    });
+  }
+
   // ===== 利得表の矩形枠 =====
   const rect_you_blue  = document.getElementById("rectangle_you_blue");
   const rect_you_green = document.getElementById("rectangle_you_green");
@@ -110,6 +154,7 @@ export function startGame(channel, rtc) {
     lockedYouRect = null;
     pendingChoice = null;
     hideAllRects();
+    clearMatrixHighlight();
   }
 
 
@@ -352,6 +397,7 @@ export function startGame(channel, rtc) {
     if (!canChoose) return;
     pendingChoice = "C";
     showYouRect("C");
+    highlightByYouChoice("C");
     setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑を選択中。次へで確定。`, { typewriter:true });
     updateNextEnabled();
   };
@@ -360,6 +406,7 @@ export function startGame(channel, rtc) {
     if (!canChoose) return;
     pendingChoice = "D";
     showYouRect("D");
+    highlightByYouChoice("D");
     setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 青を選択中。次へで確定。`, { typewriter:true });
     updateNextEnabled();
   };
@@ -611,6 +658,11 @@ export function startGame(channel, rtc) {
 
           // 相手の枠を表示（確定後）
           showOppRect(oppChoice);
+
+          // 追加：結果セル以外を薄く
+          if ((youChoice === "C" || youChoice === "D") && (oppChoice === "C" || oppChoice === "D")) {
+            highlightByOutcome(youChoice, oppChoice);
+          }
 
           // status.textContent = `Round ${currentRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
           lastResultText = `Round ${currentRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
