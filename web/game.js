@@ -296,7 +296,6 @@ export function startGame(channel, rtc) {
   // mental_sliders は「常に表示してグレーアウト」で運用
   setGray(emoUI, true);
 
-
   const API_BASE = "https://p2ppd-qualtrics.onrender.com"; // APIのURL
   // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
   let pid =
@@ -491,7 +490,7 @@ export function startGame(channel, rtc) {
 
     const choice = pendingChoice;
 
-     // 自分の枠を確定・固定表示
+    // 自分の枠を確定・固定表示
     lockedYouRect = choice;
     showYouRect(choice);
 
@@ -585,11 +584,7 @@ export function startGame(channel, rtc) {
           if (predictionDoneRound !== currentRound) {
             // まだこのラウンドで自分の予測を送っていない
             if (!waitingPrediction && predUI) {
-              // setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手が何を選ぶか予測してください`, {
-              //   typewriter: true,
-              //   speed: TEXT_ADD_SPEED,
-              //   lockNextWhileTyping: false, // 必要なら true
-              // });
+              
               setButtonsEnabled(false);
               canChoose = false;
               showPredictionUI();  // このタイミングで1回だけ開く
