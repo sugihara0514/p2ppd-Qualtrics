@@ -659,36 +659,57 @@ export function startGame(channel, rtc) {
         // 1) 予測フェーズ：まだ自分が予測していなければスライダーを出す
         if (serverStage === "predict") {
           setLayout("emopred");
+          canChoose = false;
+          setButtonsEnabled(false);
 
-          // ★統合済みの予測があるなら自動送信
-          if (queuedPrediction && queuedPrediction.round === currentRound && predictionDoneRound !== currentRound) {
-            const v = queuedPrediction.value;
-
-            predictionHistory.push({ round: currentRound, value: v });
-            qSetRound(currentRound, { prediction: v });
-            predictionDoneRound = currentRound;
-            queuedPrediction = null;
-
-            try {
-              await fetch(`${API_BASE}/game/predict`, {
-              method: "POST",
-              headers: { "Content-Type":"application/json" },
-              body: JSON.stringify({ channel, playerId: pid, round: currentRound, prediction: v }),
-              });
-            } catch (e) {
-              console.error("game/predict failed", e);
-            }
-
-            // 待機表示
-            if (predUI) fadeOutDisable(predUI);
-            hideBase(nextButton);
-            setGray(emoUI, true);
-            setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の予測が終わるのを待っています…`, { typewriter:false, force:true });
-            updateNextEnabled();
+          // 既に送っているなら待機表示だけ
+          if (predictionDoneRound === currentRound) {
+            setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の予測が終わるのを待っています…`, {
+              typewriter:false
+            });
             return;
           }
 
-          // ★保険：キューが無いなら従来UI
+          // キューがあれば自動送信（UIは出さない）
+          if (queuedPrediction && queuedPrediction.round === currentRound) {            
+            const v = queuedPrediction.value;
+
+            try {
+              const resp = await fetch(`${API_BASE}/game/predict`, {
+                method: "POST",
+                headers: { "Content-Type":"application/json" },
+                body: JSON.stringify({ channel, playerId: pid, round: currentRound, prediction: v }),
+              });
+
+              if (!resp.ok) {
+                const t = await resp.text();
+                console.error("game/predict HTTP error", resp.status, t);
+                // 失敗したらキューを残して次回pollで再送
+                setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 予測送信に失敗。再送します…`, { typewriter:false, force:true });
+                return;
+              }
+
+              // 成功したら初めて確定
+              predictionHistory.push({ round: currentRound, value: v });
+              qSetRound(currentRound, { prediction: v });
+              predictionDoneRound = currentRound;
+              queuedPrediction = null;
+
+              // 待機表示
+              if (predUI) fadeOutDisable(predUI);
+              hideBase(nextButton);
+              setGray(emoUI, true);
+              setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の予測が終わるのを待っています…`, { typewriter:false, force:true });
+              updateNextEnabled();
+              return;
+            } catch (e) {
+              console.error("game/predict failed", e);
+              setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 予測送信に失敗。再送します…`, { typewriter:false, force:true });
+              return;
+            }
+          }
+
+          // 保険：キューが無いなら従来UI
           if (predictionDoneRound !== currentRound) showPredictionUI();
         }
 
@@ -778,14 +799,21 @@ export function startGame(channel, rtc) {
 
           // このラウンドの感情入力を開始
           if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7) {
-            waitingEmotion = true;
             setLayout("emopred");
             
-            // 表示切替（結果→心的状態入力）
-            if (choiceUI) fadeOutDisable(choiceUI);
-            if (predUI)  fadeOutDisable(predUI);
-            setGray(emoUI, false);
-            // 心的状態入力中は next を見せる（有効/無効は updateNextEnabled が管理）
+            const needPrediction = (currentRound < MAX_ROUNDS);
+
+            waitingEmotion    = true;
+            waitingPrediction = needPrediction;
+
+            if (needPrediction) {
+              // 感情の下に予測を同時表示
+              if (predUI) fadeInEnable(predUI);
+              pred_slider.value = pred_slider.defaultValue || "50";
+            } else {
+              // 最終回の結果後は予測なし
+              if (predUI) fadeOutDisable(predUI);
+            }
             fadeInEnable(nextButton);
 
             // デフォルト値をリセット
@@ -798,9 +826,12 @@ export function startGame(channel, rtc) {
             emo7.value = "0";
 
             setStatus(
-              `${lastResultText}\n今の感情（評価）を入力して「次へ」で確定してください。`,
+              needPrediction
+                ? `${lastResultText}\n今の感情と、次回の予測を入力して「次へ」で確定してください。`
+                : `${lastResultText}\n最後のラウンドです。今の感情を入力して「次へ」で確定してください。`,
               { typewriter:true, force:true }
-            );          
+            );    
+
             updateNextEnabled();
           }
         }
