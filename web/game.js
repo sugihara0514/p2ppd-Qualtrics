@@ -409,6 +409,7 @@ export function startGame(channel, rtc) {
   }
 
   let currentRound = 1;
+  let emotionForRound = null; // 「感情（＋次回予測）」が対応するラウンド
   let predictionDoneRound = null;
   let lastResultRoundHandled = null;
   let lastResultText = "";
@@ -710,7 +711,14 @@ export function startGame(channel, rtc) {
           }
 
           // 保険：キューが無いなら従来UI
-          if (predictionDoneRound !== currentRound) showPredictionUI();
+          if (predictionDoneRound !== currentRound) {
+            // showPredictionUI();  // ←統合運用では出さない
+            setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 予測データが見つかりません（直前の感情+予測が未確定の可能性）。`, {
+              typewriter:false,
+              force:true
+            });
+            return;
+          }
         }
 
         // 2) 選択フェーズ：C/D ボタンを有効化
@@ -739,13 +747,10 @@ export function startGame(channel, rtc) {
         }
 
         // 直近の結果が確定していて、そのラウンドが今のラウンドと同じなら表示
-        if (
-          s.lastResult && 
-          s.lastResult.round === currentRound && 
-          lastResultRoundHandled !== currentRound
-        ) {
+        if (s.lastResult && lastResultRoundHandled !== s.lastResult.round) {
 
-          lastResultRoundHandled = currentRound;  // このラウンドはもう処理したマーク
+          const resultRound = s.lastResult.round;
+          lastResultRoundHandled = resultRound; // このラウンドはもう処理したマーク
 
           const pair = Object.entries(s.lastResult.choices); // [[pid, "C"|"D"], ...]
           const youChoice = s.lastResult.choices[pid];
@@ -801,10 +806,17 @@ export function startGame(channel, rtc) {
           if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7) {
             setLayout("emopred");
             
+            emotionForRound = resultRound;
+
             const needPrediction = (currentRound < MAX_ROUNDS);
 
             waitingEmotion    = true;
             waitingPrediction = needPrediction;
+
+            if (choiceUI) fadeOutDisable(choiceUI);
+            canChoose = false;
+
+            setGray(emoUI, false);
 
             if (needPrediction) {
               // 感情の下に予測を同時表示
@@ -928,21 +940,23 @@ export function startGame(channel, rtc) {
     const v7 = Number(emo7.value);
 
     // round の確定（0回目なら 0）
-    const roundForSave = (emotionRoundOverride != null) ? emotionRoundOverride : currentRound;
+    const baseRound =
+      (emotionRoundOverride != null) ? emotionRoundOverride :
+      (emotionForRound != null) ? emotionForRound :
+      currentRound;
 
-    // 保存も roundForSave で
-    emotionHistory.push({ round: roundForSave, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 });
-    qSetRound(roundForSave, { emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7, emotionAt: Date.now() });
+    emotionHistory.push({ round: baseRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 });
+    qSetRound(baseRound, { emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7, emotionAt: Date.now() });
 
     setGray(emoUI, true);
     hideBase(nextButton);
 
-    // ★ 0回目はサーバに送らない（サーバ側が round0 を想定してないなら）
+    // 0回目はサーバに送らない（サーバ側が round0 を想定してないなら）
     if (roundForSave === 0) {
       emotionRoundOverride = null;
       baselineEmotionDone = true;
 
-      // ★ここで通常フロー開始
+      // ここで通常フロー開始
       showPredictionUI();
       startPolling();
       return;
@@ -964,6 +978,9 @@ export function startGame(channel, rtc) {
   }
 
   async function submitEmotionAndQueuePrediction() {
+
+    if (!waitingEmotion) return;
+
     // まず状態を閉じる
     waitingEmotion = false;
     waitingPrediction = false;
@@ -977,10 +994,20 @@ export function startGame(channel, rtc) {
     const v7 = Number(emo7.value);
 
     // 感情の保存ラウンド（0回目対応）
-    const roundForSave = (emotionRoundOverride != null) ? emotionRoundOverride : currentRound;
+    // 0回目(override) > emotionForRound(結果ラウンド) > currentRound(フォールバック)
+    const baseRound =
+      (emotionRoundOverride != null) ? emotionRoundOverride :
+      (emotionForRound != null) ? emotionForRound :
+      currentRound;
 
-    emotionHistory.push({ round: roundForSave, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 });
-    qSetRound(roundForSave, { emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7, emotionAt: Date.now() });
+    try {
+      emotionHistory.push({ round: baseRound, emo1: v1, emo2: v2, emo3: v3, emo4: v4, emo5: v5, emo6: v6, emo7: v7 });
+    } catch (_) {}
+
+    qSetRound(baseRound, {
+      emo1: v1, emo2: v2, emo3: v3, emo4: v4, emo5: v5, emo6: v6, emo7: v7,
+      emotionAt: Date.now(),
+    });
 
     // UIをいったん閉じる
     setGray(emoUI, true);
@@ -988,43 +1015,51 @@ export function startGame(channel, rtc) {
     hideBase(nextButton);
 
     // 0回目はサーバ送信しない（現方針のまま）
-    if (roundForSave === 0) {
+    if (baseRound === 0) {
       emotionRoundOverride = null;
       baselineEmotionDone = true;
 
       // 予測は「Round1用」としてキュー
       const pv = Number(pred_slider.value);
-      queuedPrediction = { round: 1, value: pv };
-      qSetRound(1, { prediction: pv });
+      const targetRound = 1;
+
+      queuedPrediction = { round: targetRound, value: pv };
+      qSetRound(targetRound, { prediction: pv });
 
       // ポーリング開始（予測UIはもう出さない）
       startPolling();
       setStatus("開始を待っています…", { typewriter:false, force:true });
+      updateNextEnabled();
       return;
     }
 
     // 通常ラウンドの感情はサーバ送信
     try {
-      await fetch(`${API_BASE}/game/emotion`, {
+      const resp = await fetch(`${API_BASE}/game/emotion`, {
         method: "POST",
         headers: { "Content-Type":"application/json" },
         body: JSON.stringify({ channel, playerId: pid, round: currentRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 }),
       });
+      if (!resp.ok) {
+        const t = await resp.text().catch(() => "");
+        console.error("game/emotion HTTP error", resp.status, t);
+      }
     } catch (e) {
       console.error("game/emotion failed", e);
     }
 
     // 最後の投資（MAX_ROUNDS）は予測なし：キューしない
-    if (currentRound < MAX_ROUNDS) {
+    if (baseRound < MAX_ROUNDS) {
       const pv = Number(pred_slider.value);
-      const targetRound = currentRound + 1;
+      const targetRound = baseRound + 1;
+      
       queuedPrediction = { round: targetRound, value: pv };
       qSetRound(targetRound, { prediction: pv });
     } else {
       queuedPrediction = null;
     }
 
-    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 次のラウンド開始を待っています…`, { typewriter:false, force:true });
+    setStatus(`Round ${baseRound}/${MAX_ROUNDS}: 次のラウンド開始を待っています…`, { typewriter:false, force:true });
     updateNextEnabled();
   }
 
