@@ -878,7 +878,7 @@ export function startGame(channel, rtc) {
     // ★ 0回目はサーバに送らない（サーバ側が round0 を想定してないなら）
     if (roundForSave === 0) {
       emotionRoundOverride = null;
-      aselineEmotionDone = true;
+      baselineEmotionDone = true;
 
       // ★ここで通常フロー開始
       showPredictionUI();
