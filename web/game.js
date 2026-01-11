@@ -2,6 +2,65 @@
 export function startGame(channel, rtc) {
 
   const ui = document.querySelector(".container");
+
+  let baselineEmotionDone = false;
+  let emotionRoundOverride = null; // 0回目用に round を上書き
+
+  function showBaselineEmotionUI() {
+  baselineEmotionDone = false;
+  emotionRoundOverride = 0;
+
+  setLayout("emopred");
+
+  waitingEmotion = true;
+
+  // 表示：感情を開く、予測/選択は閉じる
+  if (choiceUI) fadeOutDisable(choiceUI);
+  if (predUI)  fadeOutDisable(predUI);
+  setGray(emoUI, false);
+  fadeInEnable(nextButton);
+
+  // 初期化（既存と同じ）
+  emo1.value = "0"; emo2.value = "0"; emo3.value = "0";
+  emo4.value = "0"; emo5.value = "0"; emo6.value = "0"; emo7.value = "0";
+
+  setStatus("ゲーム開始前の現在の感情（評価）を入力して「次へ」で確定してください。", { typewriter:true, force:true });
+  updateNextEnabled();
+}
+
+  // レイアウト容器
+  const layoutEmoPred = document.getElementById("layout_emopred");
+  const layoutChoice  = document.getElementById("layout_choice");
+
+  // 移動するブロック
+  const blockVideo  = document.getElementById("block_video");
+  const blockMatrix = document.getElementById("block_matrix");
+  const blockChat   = document.getElementById("block_chat");
+  const blockEmo    = document.getElementById("block_emo");
+  const blockPred   = document.getElementById("block_pred");
+  const blockChoice = document.getElementById("block_choice");
+  const blockNext   = document.getElementById("block_next");
+
+  function moveBlocksTo(container, blocks) {
+    for (const b of blocks) {
+      if (b && b.parentNode !== container) container.appendChild(b);
+    }
+  }
+
+  function setLayout(mode /* "emopred" | "choice" */) {
+    if (!layoutEmoPred || !layoutChoice) return;
+
+    layoutEmoPred.classList.toggle("is_active", mode === "emopred");
+    layoutChoice .classList.toggle("is_active", mode === "choice");
+
+    if (mode === "emopred") {
+      // ※順番をCSSで決めたいなら、ここは「移動するだけ」でOK（あとでCSS orderで調整可能）
+      moveBlocksTo(layoutEmoPred, [blockMatrix, blockChat, blockEmo, blockPred, blockNext]);
+    } else {
+      moveBlocksTo(layoutChoice,  [blockVideo, blockMatrix, blockChat, blockChoice, blockNext]);
+    }
+  }
+
   if (ui) ui.style.display = "block";
 
   const status = document.getElementById("dynamicText");
@@ -382,11 +441,14 @@ export function startGame(channel, rtc) {
     setButtonsEnabled(false);
     canChoose = false;
 
-    // 予測スライダーを表示
-    showPredictionUI();
+    // 予測に入る前に 0回目感情
+    showBaselineEmotionUI()
 
-    // サーバ状態のポーリング開始
-    startPolling();
+    // // 予測スライダーを表示
+    // showPredictionUI();
+
+    // // サーバ状態のポーリング開始
+    // startPolling();
   }).catch(err => {
     console.error("game/join failed", err);
     setStatus("ゲーム初期化に失敗しました", { typewriter:false, force:true });
@@ -601,6 +663,7 @@ export function startGame(channel, rtc) {
 
         // 2) 選択フェーズ：C/D ボタンを有効化
         if (serverStage === "choice") {
+          setLayout("choice");
           if (!hasChosenThisRound && !canChoose) {
             setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑か青を選び、次へで確定してください`, {
               typewriter: true,
@@ -685,6 +748,7 @@ export function startGame(channel, rtc) {
           // このラウンドの感情入力を開始
           if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7) {
             waitingEmotion = true;
+            setLayout("emopred");
             
             // 表示切替（結果→心的状態入力）
             if (choiceUI) fadeOutDisable(choiceUI);
@@ -743,6 +807,7 @@ export function startGame(channel, rtc) {
   }
 
   function showPredictionUI() {
+    setLayout("emopred");
     if (!predUI || !pred_slider) return;
 
     waitingPrediction = true;
@@ -800,24 +865,26 @@ export function startGame(channel, rtc) {
     const v6 = Number(emo6.value);
     const v7 = Number(emo7.value);
 
-    emotionHistory.push({ round: currentRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 });
-    // qSet("pd_emotion_json", emotionHistory);
+    // round の確定（0回目なら 0）
+    const roundForSave = (emotionRoundOverride != null) ? emotionRoundOverride : currentRound;
 
-     // 個別保存（ラウンド別・感情）
-    qSetRound(currentRound, {
-      emo1: v1,
-      emo2: v2,
-      emo3: v3,
-      emo4: v4,
-      emo5: v5,
-      emo6: v6,
-      emo7: v7,
-      emotionAt: Date.now(), // 任意
-    });
+    // 保存も roundForSave で
+    emotionHistory.push({ round: roundForSave, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 });
+    qSetRound(roundForSave, { emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7, emotionAt: Date.now() });
 
-    // UIを閉じる（心的状態は「グレーアウト」にする）
     setGray(emoUI, true);
     hideBase(nextButton);
+
+    // ★ 0回目はサーバに送らない（サーバ側が round0 を想定してないなら）
+    if (roundForSave === 0) {
+      emotionRoundOverride = null;
+      aselineEmotionDone = true;
+
+      // ★ここで通常フロー開始
+      showPredictionUI();
+      startPolling();
+      return;
+    }
 
     // サーバ送信（既存の /game/emotion をそのまま）
     try {
