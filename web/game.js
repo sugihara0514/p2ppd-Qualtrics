@@ -645,7 +645,7 @@ export function startGame(channel, rtc) {
 
           // 新しいラウンドなのでフラグ類をリセット
           hasChosenThisRound      = false;
-          lastResultRoundHandled  = null;
+          // lastResultRoundHandled  = null;
           waitingEmotion          = false;
           waitingPrediction       = false;
           predictionDoneRound     = null;
@@ -729,7 +729,7 @@ export function startGame(channel, rtc) {
         // 2) 選択フェーズ：C/D ボタンを有効化
         if (serverStage === "choice") {
           setLayout("choice");
-          if (!hasChosenThisRound && !canChoose) {
+          if (!hasChosenThisRound) {
             setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑か青を選び、次へで確定してください`, {
               typewriter: true,
               force: true
