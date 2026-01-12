@@ -705,6 +705,7 @@ export function startGame(channel, rtc) {
               if (predUI) fadeOutDisable(predUI);
               hideBase(nextButton);
               setGray(emoUI, true);
+
               setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の予測が終わるのを待っています…`, { typewriter:false, force:true });
               updateNextEnabled();
               return;
@@ -715,21 +716,20 @@ export function startGame(channel, rtc) {
             }
           }
 
-          // 保険：キューが無いなら従来UI
-          if (predictionDoneRound !== currentRound) {
-            // showPredictionUI();  // ←統合運用では出さない
-            setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 予測データが見つかりません（直前の感情+予測が未確定の可能性）。`, {
-              typewriter:false,
-              force:true
-            });
-            return;
-          }
+          
+          setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 予測データが見つかりません（直前の感情+予測が未確定の可能性）。`, {
+            typewriter:false,
+            force:true
+          });
+          return;
         }
 
         // 2) 選択フェーズ：C/D ボタンを有効化
         if (serverStage === "choice") {
           setLayout("choice");
-          if (!hasChosenThisRound) {
+
+
+          if (!hasChosenThisRound && !canChoose) {
             setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑か青を選び、次へで確定してください`, {
               typewriter: true,
               force: true
@@ -738,6 +738,7 @@ export function startGame(channel, rtc) {
             // choice表示
             if (predUI) fadeOutDisable(predUI);
             setGray(emoUI, true);
+
             fadeInEnable(choiceUI);           
              // choice入力中は next を見せる（有効/無効は updateNextEnabled が管理）
             fadeInEnable(nextButton);
@@ -749,109 +750,116 @@ export function startGame(channel, rtc) {
             roundStartAt = performance.now();
             pendingRtMs = null;
           }
+          return;
+        }
+
+        // 3) emotion（サーバの stage を尊重してここでだけ lastResult/感情入力）
+        if (serverStage === "emotion") {
+          if (s.lastResult && lastResultRoundHandled !== s.lastResult.round) {
+
+            const resultRound = s.lastResult.round;
+            lastResultRoundHandled = resultRound; // このラウンドはもう処理したマーク
+
+            const pair = Object.entries(s.lastResult.choices); // [[pid, "C"|"D"], ...]
+            const youChoice = s.lastResult.choices[pid];
+
+            const oppEntry = pair.find(([id]) => id !== pid);
+            const oppIdNow = oppEntry ? oppEntry[0] : null;
+            const oppChoice = oppEntry ? oppEntry[1] : "?";
+
+            if (oppIdNow && !oppId) {
+              oppId = oppIdNow;
+              qSet("pd_opp_id", String(oppId));  // Qualtricsに保存
+            }
+
+            const youPayoff = s.lastResult.payoffs[pid];
+            const youTotal = s.lastResult.totals[pid];
+            const oppTotal = (oppIdNow && s.lastResult.totals) ? s.lastResult.totals[oppIdNow] : 0;  // 相手の合計
+
+            if (you_total_score) you_total_score.textContent = String(youTotal ?? 0);
+            if (opp_total_score) opp_total_score.textContent = String(oppTotal ?? 0);
+
+            // 相手の枠を表示（確定後）
+            showOppRect(oppChoice);
+
+            // 追加：結果セル以外を薄く
+            if ((youChoice === "C" || youChoice === "D") && (oppChoice === "C" || oppChoice === "D")) {
+              highlightByOutcome(youChoice, oppChoice);
+            }
+
+            // status.textContent = `Round ${currentRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
+            lastResultText = `Round ${resultRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
+
+            // 履歴に追加してEmbedded Dataにも反映（途中経過も欲しければ）
+            history.push({
+              round: resultRound,
+              you: youChoice,
+              opp: oppChoice,
+              youPayoff,
+              youTotal,
+            });
+
+            qSet("pd_total", String(youTotal));
+            // qSet("pd_history_json", history);
+
+            // 個別保存（結果系）
+            qSetRound(resultRound, {
+              youChoice,
+              oppChoice,
+              youPayoff,
+              youTotal,
+            });
+
+            // このラウンドの感情入力を開始
+            if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7) {
+              setLayout("emopred");
+            
+              emotionForRound = resultRound;
+
+              const needPrediction = (currentRound < MAX_ROUNDS);
+
+              waitingEmotion    = true;
+              waitingPrediction = needPrediction;
+
+              if (choiceUI) fadeOutDisable(choiceUI);
+              canChoose = false;
+
+              setGray(emoUI, false);
+
+              if (needPrediction) {
+                // 感情の下に予測を同時表示
+                if (predUI) fadeInEnable(predUI);
+                pred_slider.value = pred_slider.defaultValue || "50";
+              } else {
+                // 最終回の結果後は予測なし
+                if (predUI) fadeOutDisable(predUI);
+              }
+              fadeInEnable(nextButton);
+
+              // デフォルト値をリセット
+              emo1.value = "0";
+              emo2.value = "0";
+              emo3.value = "0";
+              emo4.value = "0";
+              emo5.value = "0";
+              emo6.value = "0";
+              emo7.value = "0";
+
+              setStatus(
+                needPrediction
+                  ? `${lastResultText}\n今の感情と、次回の予測を入力して「次へ」で確定してください。`
+                  : `${lastResultText}\n最後のラウンドです。今の感情を入力して「次へ」で確定してください。`,
+                { typewriter:true, force:true }
+              );    
+
+              updateNextEnabled();
+            }
+          }
+          return;
         }
 
         // 直近の結果が確定していて、そのラウンドが今のラウンドと同じなら表示
-        if (s.lastResult && lastResultRoundHandled !== s.lastResult.round) {
-
-          const resultRound = s.lastResult.round;
-          lastResultRoundHandled = resultRound; // このラウンドはもう処理したマーク
-
-          const pair = Object.entries(s.lastResult.choices); // [[pid, "C"|"D"], ...]
-          const youChoice = s.lastResult.choices[pid];
-
-          const oppEntry = pair.find(([id]) => id !== pid);
-          const oppIdNow = oppEntry ? oppEntry[0] : null;
-          const oppChoice = oppEntry ? oppEntry[1] : "?";
-
-          if (oppIdNow && !oppId) {
-            oppId = oppIdNow;
-            qSet("pd_opp_id", String(oppId));  // Qualtricsに保存
-          }
-
-          const youPayoff = s.lastResult.payoffs[pid];
-          const youTotal = s.lastResult.totals[pid];
-          const oppTotal = (oppIdNow && s.lastResult.totals) ? s.lastResult.totals[oppIdNow] : 0;  // 相手の合計
-
-          if (you_total_score) you_total_score.textContent = String(youTotal ?? 0);
-          if (opp_total_score) opp_total_score.textContent = String(oppTotal ?? 0);
-
-          // 相手の枠を表示（確定後）
-          showOppRect(oppChoice);
-
-          // 追加：結果セル以外を薄く
-          if ((youChoice === "C" || youChoice === "D") && (oppChoice === "C" || oppChoice === "D")) {
-            highlightByOutcome(youChoice, oppChoice);
-          }
-
-          // status.textContent = `Round ${currentRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
-          lastResultText = `Round ${currentRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
-
-          // 履歴に追加してEmbedded Dataにも反映（途中経過も欲しければ）
-          history.push({
-            round: currentRound,
-            you: youChoice,
-            opp: oppChoice,
-            youPayoff,
-            youTotal,
-          });
-
-          qSet("pd_total", String(youTotal));
-          // qSet("pd_history_json", history);
-
-          // 個別保存（結果系）
-          qSetRound(currentRound, {
-            youChoice,
-            oppChoice,
-            youPayoff,
-            youTotal,
-          });
-
-          // このラウンドの感情入力を開始
-          if (emoUI && emo1 && emo2 && emo3 && emo4 && emo5 && emo6 && emo7) {
-            setLayout("emopred");
-            
-            emotionForRound = resultRound;
-
-            const needPrediction = (currentRound < MAX_ROUNDS);
-
-            waitingEmotion    = true;
-            waitingPrediction = needPrediction;
-
-            if (choiceUI) fadeOutDisable(choiceUI);
-            canChoose = false;
-
-            setGray(emoUI, false);
-
-            if (needPrediction) {
-              // 感情の下に予測を同時表示
-              if (predUI) fadeInEnable(predUI);
-              pred_slider.value = pred_slider.defaultValue || "50";
-            } else {
-              // 最終回の結果後は予測なし
-              if (predUI) fadeOutDisable(predUI);
-            }
-            fadeInEnable(nextButton);
-
-            // デフォルト値をリセット
-            emo1.value = "0";
-            emo2.value = "0";
-            emo3.value = "0";
-            emo4.value = "0";
-            emo5.value = "0";
-            emo6.value = "0";
-            emo7.value = "0";
-
-            setStatus(
-              needPrediction
-                ? `${lastResultText}\n今の感情と、次回の予測を入力して「次へ」で確定してください。`
-                : `${lastResultText}\n最後のラウンドです。今の感情を入力して「次へ」で確定してください。`,
-              { typewriter:true, force:true }
-            );    
-
-            updateNextEnabled();
-          }
-        }
+        
       } catch (e) {
         console.error("poll/state failed", e);
       }
@@ -1043,7 +1051,7 @@ export function startGame(channel, rtc) {
       const resp = await fetch(`${API_BASE}/game/emotion`, {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ channel, playerId: pid, round: currentRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 }),
+        body: JSON.stringify({ channel, playerId: pid, round: baseRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7 }),
       });
       if (!resp.ok) {
         const t = await resp.text().catch(() => "");
