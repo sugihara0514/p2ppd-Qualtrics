@@ -42,7 +42,6 @@ export function startGame(channel, rtc) {
   const blockMatrix = document.getElementById("block_matrix");
   const blockChat   = document.getElementById("block_chat");
   const blockEmo    = document.getElementById("block_emo");
-  const blockPred   = document.getElementById("block_pred");
   const blockChoice = document.getElementById("block_choice");
   const blockNext   = document.getElementById("block_next");
 
@@ -62,7 +61,7 @@ export function startGame(channel, rtc) {
       // 映像は常にchoice側へ退避
       moveBlocksTo(layoutChoice, [blockVideo]);
 
-      moveBlocksTo(layoutEmoPred, [blockMatrix, blockChat, blockEmo, blockPred, blockNext]);
+      moveBlocksTo(layoutEmoPred, [blockMatrix, blockChat, blockEmo, blockNext]);
     } else {
       moveBlocksTo(layoutChoice,  [blockVideo, blockMatrix, blockChat, blockChoice, blockNext]);
     }
