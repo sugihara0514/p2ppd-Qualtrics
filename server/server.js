@@ -315,7 +315,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API on :${PORT}`));
 
 // --- 囚人のジレンマ ---
-const PAYOFF = { CC:[3,3], CD:[0,5], DC:[5,0], DD:[1,1] };
+const PAYOFF = { CC:[2,2], CD:[0,3], DC:[3,0], DD:[1,1] };
 const games = new Map();
 
 // ゲーム参加（channel と client側で作った playerId を紐づけ）

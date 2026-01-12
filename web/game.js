@@ -47,7 +47,8 @@ export function startGame(channel, rtc) {
 
   function moveBlocksTo(container, blocks) {
     for (const b of blocks) {
-      if (b && b.parentNode !== container) container.appendChild(b);
+      if (!b) continue;
+      container.appendChild(b); // 毎回appendして順序を確定
     }
   }
 
