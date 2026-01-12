@@ -652,6 +652,11 @@ export function startGame(channel, rtc) {
           roundStartAt = null;
           pendingRtMs = null;
 
+          canChoose = false;
+          pendingChoice = null;
+          hideBase(choiceUI);   // 表示状態も初期化しておくと安全
+          moveOut(choiceUI);
+
           resetRectsForNewRound(); // 枠リセットhideAllRects
         }
 
@@ -952,7 +957,7 @@ export function startGame(channel, rtc) {
     hideBase(nextButton);
 
     // 0回目はサーバに送らない（サーバ側が round0 を想定してないなら）
-    if (roundForSave === 0) {
+    if (baseRound === 0) {
       emotionRoundOverride = null;
       baselineEmotionDone = true;
 
@@ -1052,7 +1057,7 @@ export function startGame(channel, rtc) {
     if (baseRound < MAX_ROUNDS) {
       const pv = Number(pred_slider.value);
       const targetRound = baseRound + 1;
-      
+
       queuedPrediction = { round: targetRound, value: pv };
       qSetRound(targetRound, { prediction: pv });
     } else {
