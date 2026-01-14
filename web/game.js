@@ -837,13 +837,13 @@ export function startGame(channel, rtc) {
               fadeInEnable(nextButton);
 
               // デフォルト値をリセット
-              emo1.value = "0";
-              emo2.value = "0";
-              emo3.value = "0";
-              emo4.value = "0";
-              emo5.value = "0";
-              emo6.value = "0";
-              emo7.value = "0";
+              emo1.value = "50";
+              emo2.value = "50";
+              emo3.value = "50";
+              emo4.value = "50";
+              emo5.value = "50";
+              emo6.value = "50";
+              emo7.value = "50";
 
               setStatus(
                 needPrediction
