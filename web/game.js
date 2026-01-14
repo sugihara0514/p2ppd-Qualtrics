@@ -37,6 +37,9 @@ export function startGame(channel, rtc) {
   const layoutEmoPred = document.getElementById("layout_emopred");
   const layoutChoice  = document.getElementById("layout_choice");
 
+  // 固定ブロック
+  const blockScore = document.getElementById("block_score");
+
   // 移動するブロック
   const blockVideo  = document.getElementById("block_video");
   const blockMatrix = document.getElementById("block_matrix");
@@ -62,9 +65,9 @@ export function startGame(channel, rtc) {
       // 映像は常にchoice側へ退避
       moveBlocksTo(layoutChoice, [blockVideo]);
 
-      moveBlocksTo(layoutEmoPred, [blockMatrix, blockChat, blockEmo, blockNext]);
+      moveBlocksTo(layoutEmoPred, [blockScore, blockMatrix, blockChat, blockEmo, blockNext]);
     } else {
-      moveBlocksTo(layoutChoice,  [blockVideo, blockMatrix, blockChat, blockChoice, blockNext]);
+      moveBlocksTo(layoutChoice,  [blockScore, blockVideo, blockMatrix, blockChat, blockChoice, blockNext]);
     }
   }
 
