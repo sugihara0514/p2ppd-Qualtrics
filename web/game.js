@@ -24,8 +24,8 @@ export function startGame(channel, rtc) {
     fadeInEnable(nextButton);
 
     // 初期化（既存と同じ）
-    emo1.value = "0"; emo2.value = "0"; emo3.value = "0";
-    emo4.value = "0"; emo5.value = "0"; emo6.value = "0"; emo7.value = "0";
+    emo1.value = "50"; emo2.value = "50"; emo3.value = "50";
+    emo4.value = "50"; emo5.value = "50"; emo6.value = "50"; emo7.value = "50";
 
     pred_slider.value = pred_slider.defaultValue || "50";
 
@@ -304,6 +304,9 @@ export function startGame(channel, rtc) {
   // ===== UI 表示制御（honnbann 1.html の unvisible/disable/grayout 前提） =====
   const ANIM_MS = 1000; // time_animation と同じ
 
+  // フェードの予約を要素ごとに管理
+  const __fadeTimers = new WeakMap();fadeInEnable
+
   function showBase(el) {
     if (!el) return;
     el.classList.remove("unvisible", "disable");
@@ -334,6 +337,14 @@ export function startGame(channel, rtc) {
   // “フェードインして使える状態にする”
   function fadeInEnable(el) {
     if (!el) return;
+
+    // 過去のfadeOut予約が残ってたらキャンセル
+    const t = __fadeTimers.get(el);
+    if (t) {
+      clearTimeout(t);
+      __fadeTimers.delete(el);
+    }
+
     el.classList.remove("anim_fadeout");  // フェードアウト残骸を消す
     moveIn(el);                           // 位置を入れる（必要なUIだけ
     showBase(el);                         // 見える+操作可
@@ -344,13 +355,22 @@ export function startGame(channel, rtc) {
   // “フェードアウトして隠す”
   function fadeOutDisable(el) {
     if (!el) return;
+
+    // 同じ要素に予約があれば上書き（多重予約を防ぐ）
+    const t = __fadeTimers.get(el);
+    if (t) clearTimeout(t);
+
     el.classList.remove("anim_fadein");
     el.classList.add("anim_fadeout");
-    setTimeout(() => {
+
+    const timer = setTimeout(() => {
       el.classList.remove("anim_fadeout");
       hideBase(el);
       moveOut(el);
+      __fadeTimers.delete(el);
     }, ANIM_MS);
+
+    __fadeTimers.set(el, timer);
   }
 
   // 初期状態（予測/選択は非表示 + 操作不可）
