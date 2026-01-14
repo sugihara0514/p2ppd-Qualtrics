@@ -55,6 +55,16 @@ export function startGame(channel, rtc) {
     }
   }
 
+  async function setRemoteAudio(on) {
+    try {
+      if (rtc && typeof rtc.setRemoteAudioEnabled === "function") {
+        await rtc.setRemoteAudioEnabled(!!on);
+      }
+    } catch (e) {
+      console.warn("setRemoteAudioEnabled failed", e);
+    }
+  }
+
   function setLayout(mode /* "emopred" | "choice" */) {
     if (!layoutEmoPred || !layoutChoice) return;
 
@@ -62,11 +72,15 @@ export function startGame(channel, rtc) {
     layoutChoice .classList.toggle("is_active", mode === "choice");
 
     if (mode === "emopred") {
+      setRemoteAudio(false); // 感情/予測は相手音声OFF
+
       // 映像は常にchoice側へ退避
       moveBlocksTo(layoutChoice, [blockVideo]);
 
       moveBlocksTo(layoutEmoPred, [blockScore, blockMatrix, blockChat, blockEmo, blockNext]);
     } else {
+      setRemoteAudio(true); // 選択は相手音声ON
+
       moveBlocksTo(layoutChoice,  [blockScore, blockVideo, blockMatrix, blockChat, blockChoice, blockNext]);
     }
   }
@@ -649,7 +663,7 @@ export function startGame(channel, rtc) {
             history[history.length - 1]?.youTotal ??
             0;
             
-          setStatus(`終了！あなたの合計=${finalTotal}`, { typewriter:false, force:true });
+          setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。画面右下の→ボタンで次へ進んでください。`, { typewriter:false, force:true });
           setButtonsEnabled(false);
 
           window.__PD_GAME_OVER__ = true;
