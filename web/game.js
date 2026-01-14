@@ -632,6 +632,8 @@ export function startGame(channel, rtc) {
           setStatus(`終了！あなたの合計=${finalTotal}`, { typewriter:false, force:true });
           setButtonsEnabled(false);
 
+          document.getElementById("NextButton")?.style.removeProperty("display");
+
           // qSet("pd_prediction_json", predictionHistory);
           // qSet("pd_emotion_json", emotionHistory);
           // qSet("pd_history_json", history);
