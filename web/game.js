@@ -652,19 +652,7 @@ export function startGame(channel, rtc) {
           setStatus(`終了！あなたの合計=${finalTotal}`, { typewriter:false, force:true });
           setButtonsEnabled(false);
 
-          // Qualtricsナビを復活
-          if (typeof Qualtrics !== "undefined" && Qualtrics.SurveyEngine) {
-            Qualtrics.SurveyEngine.showNextButton?.();
-            Qualtrics.SurveyEngine.showPreviousButton?.();
-
-            // 念のためDOM側も復活
-            const show = (sel) => document.querySelectorAll(sel).forEach(el => {
-              el.style.removeProperty("display");
-              el.style.removeProperty("visibility");
-              el.style.removeProperty("pointer-events");
-            });
-            show("#NextButton, #PreviousButton, #Buttons");
-          }
+          window.__PD_GAME_OVER__ = true;
 
           // qSet("pd_prediction_json", predictionHistory);
           // qSet("pd_emotion_json", emotionHistory);
