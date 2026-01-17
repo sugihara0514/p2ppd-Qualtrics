@@ -669,6 +669,7 @@ export function startGame(channel, rtc) {
             0;
             
           setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。画面右下の→ボタンで次へ進んでください。`, { typewriter:false, force:true });
+          lastResultRoundHandled = resultRound; // このラウンドはもう処理したマーク
           setButtonsEnabled(false);
 
           window.__PD_GAME_OVER__ = true;
@@ -802,8 +803,6 @@ export function startGame(channel, rtc) {
           if (s.lastResult && lastResultRoundHandled !== s.lastResult.round) {
 
             const resultRound = s.lastResult.round;
-            lastResultRoundHandled = resultRound; // このラウンドはもう処理したマーク
-
             const pair = Object.entries(s.lastResult.choices); // [[pid, "C"|"D"], ...]
             const youChoice = s.lastResult.choices[pid];
 
@@ -860,24 +859,17 @@ export function startGame(channel, rtc) {
             
               emotionForRound = resultRound;
 
-              const needPrediction = (currentRound < MAX_ROUNDS);
-
               waitingEmotion    = true;
-              waitingPrediction = needPrediction;
+              waitingPrediction = false;
 
               if (choiceUI) fadeOutDisable(choiceUI);
               canChoose = false;
 
               setGray(emoUI, false);
 
-              if (needPrediction) {
-                // 感情の下に予測を同時表示
-                if (predUI) fadeInEnable(predUI);
-                pred_slider.value = pred_slider.defaultValue || "50";
-              } else {
-                // 最終回の結果後は予測なし
-                if (predUI) fadeOutDisable(predUI);
-              }
+              // 予測UIは使わない
+              if (predUI) fadeOutDisable(predUI);
+
               fadeInEnable(nextButton);
 
               // デフォルト値をリセット
@@ -892,14 +884,7 @@ export function startGame(channel, rtc) {
               emo9.value = "50";
               emo10.value = "50";
 
-
-              setStatus(
-                needPrediction
-                  ? `${lastResultText}\n今の感情と、次回の予測を入力して「次へ」で確定してください。`
-                  : `${lastResultText}\n最後のラウンドです。今の感情を入力して「次へ」で確定してください。`,
-                { typewriter:true, force:true }
-              );    
-
+              setStatus(`${lastResultText}\n今の感情を入力して「次へ」で確定してください。`, { typewriter:true, force:true });
               updateNextEnabled();
             }
           }
