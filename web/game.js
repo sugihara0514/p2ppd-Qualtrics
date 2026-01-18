@@ -455,6 +455,8 @@ export function startGame(channel, rtc) {
   let predictionDoneRound = null;
   let lastResultRoundHandled = null;
   let lastResultText = "";
+  
+  let emotionUIShownForRound = null;
 
   let canChoose = false;
   let hasChosenThisRound = false;
@@ -697,6 +699,8 @@ export function startGame(channel, rtc) {
           roundStartAt = null;
           pendingRtMs = null;
 
+          emotionUIShownForRound = null;
+
           canChoose = false;
           pendingChoice = null;
           hideBase(choiceUI);   // 表示状態も初期化しておくと安全
@@ -803,6 +807,11 @@ export function startGame(channel, rtc) {
           if (s.lastResult && lastResultRoundHandled !== s.lastResult.round) {
 
             const resultRound = s.lastResult.round;
+
+            // 既にこのラウンドの感情UIを開いているなら何もしない（無限初期化防止）
+            if (emotionUIShownForRound === resultRound) return;
+            emotionUIShownForRound = resultRound;
+
             const pair = Object.entries(s.lastResult.choices); // [[pid, "C"|"D"], ...]
             const youChoice = s.lastResult.choices[pid];
 

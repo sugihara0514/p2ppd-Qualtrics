@@ -496,7 +496,7 @@ app.post("/game/emotion", (req, res) => {
   });
 
   // 2人分そろったら次ラウンドへ
-  if (g.emotions.size >= g.players.size) {
+  if (g.players.size >= 2 && g.emotions.size >= 2) {
     g.emotions.clear();
     g.predictions.clear();
     g.choices.clear();
