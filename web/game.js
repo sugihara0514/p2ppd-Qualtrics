@@ -12,6 +12,9 @@ export function startGame(channel, rtc) {
 
     setLayout("emopred");
 
+    moveBlocksTo(layoutChoice, [blockMatrix]);                 
+    moveBlocksTo(layoutEmoPred, [blockScore, blockChat, blockEmo, blockNext]);
+
     waitingEmotion = true;
     // waitingPrediction = true; // 0回目は感情+予測
 
@@ -1016,9 +1019,21 @@ export function startGame(channel, rtc) {
       emotionRoundOverride = null;
       baselineEmotionDone = true;
 
+      // ★追加：baseline完了をサーバに通知（相手待ち制御用）
+      try {
+        await fetch(`${API_BASE}/game/ready`, {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({ channel, playerId: pid }),
+        });
+      } catch (e) {
+        console.error("game/ready failed", e);
+      }
+
       // ここで通常フロー開始
       // showPredictionUI();
       startPolling();
+      setStatus("相手の準備が終わるのを待っています…", { typewriter:false, force:true });
       return;
     }
 

@@ -327,7 +327,8 @@ app.post("/game/join", async (req, res) => {
     games.set(channel, {
       round: 1,
       players: new Set(),
-      stage: "choice",          // "choice" | "emotion"
+      stage: "waiting",          // 初期wating、その後emotion、choice
+      ready: new Set(),          // baseline完了した人
       predictions: new Map(),    // playerId -> predictionValue
       choices: new Map(),        // playerId -> "C" | "D"
       emotions: new Map(),       // playerId -> { emo1, emo2, emo3, ・・・ }
@@ -518,6 +519,29 @@ app.post("/game/emotion", (req, res) => {
   });
 });
 
+// baseline（0回目）完了通知
+app.post("/game/ready", (req, res) => {
+  const { channel, playerId } = req.body || {};
+  if (!channel || !playerId) {
+    return res.status(400).json({ error: "channel and playerId required" });
+  }
+  const g = games.get(channel);
+  if (!g) return res.status(400).json({ error: "game_not_found", channel });
+  if (g.over) return res.status(400).json({ error: "game_over" });
+
+  g.players.add(String(playerId));
+  if (!g.ready) g.ready = new Set();
+  g.ready.add(String(playerId));
+
+  // 2人揃うまでは waiting
+  if (g.players.size >= 2 && g.ready.size >= 2) {
+    g.stage = "choice";
+  } else {
+    g.stage = "waiting";
+  }
+
+  return res.json({ ok: true, stage: g.stage, ready: g.ready.size, players: g.players.size });
+});
 
 // クライアントが状態をポーリングで取得
 app.get("/game/state", (req, res) => {
