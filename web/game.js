@@ -3,6 +3,9 @@ export function startGame(channel, rtc) {
 
   const ui = document.querySelector(".container");
 
+   // ゲーム開始後は待機用スタイルを解除
+  ui?.classList.remove("pre_match");
+
   let baselineEmotionDone = false;
   let emotionRoundOverride = null; // 0回目用に round を上書き
 
