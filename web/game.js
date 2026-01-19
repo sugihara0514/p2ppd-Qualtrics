@@ -15,7 +15,6 @@ export function startGame(channel, rtc) {
 
     setLayout("emopred");
 
-    moveBlocksTo(layoutChoice, [blockMatrix]);                 
     moveBlocksTo(layoutEmoPred, [blockScore, blockChat, blockEmo, blockNext]);
 
     waitingEmotion = true;
