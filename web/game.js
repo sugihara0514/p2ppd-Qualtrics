@@ -713,6 +713,18 @@ export function startGame(channel, rtc) {
         }
 
         // ===== フェーズごとのUI制御 =====
+        // 0) 準備フェーズ
+        if (serverStage === "waiting") {
+          setLayout("emopred");          // baseline画面のまま
+          canChoose = false;
+          setChoiceButtonsEnabled(false);
+          if (choiceUI) fadeOutDisable(choiceUI);
+          setGray(emoUI, true);
+          hideBase(nextButton);
+
+          setStatus("相手の準備が終わるのを待っています…", { typewriter:false });
+          return;
+        }
 
         // 1) 予測フェーズ（現在廃止）
         // if (serverStage === "predict") {
