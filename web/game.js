@@ -671,7 +671,7 @@ export function startGame(channel, rtc) {
             0;
             
           setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。画面右下の→ボタンで次へ進んでください。`, { typewriter:false, force:true });
-          lastResultRoundHandled = resultRound; // このラウンドはもう処理したマーク
+          lastResultRoundHandled = s.lastResult?.round ?? lastResultRoundHandled; // このラウンドはもう処理したマーク
           setButtonsEnabled(false);
 
           window.__PD_GAME_OVER__ = true;
