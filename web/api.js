@@ -1,6 +1,6 @@
 // api.js
 // renderのリンク
-export const API_BASE = "https://p2ppd-qualtrics.onrender.com"; 
+export const API_BASE = "https://multimodalpd.onrender.com"; 
 
 export async function joinQueue() {
   const r = await fetch(`${API_BASE}/join`, { method: "POST" });
