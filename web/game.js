@@ -165,6 +165,11 @@ export function startGame(channel, rtc) {
 
   renderMuteUI();
 
+  const CHOICE_LABEL = { C: "緑", D: "青" };
+  function choiceLabel(c) {
+    return CHOICE_LABEL[c] ?? String(c ?? "");
+  }
+
   // ===== 利得表（4セル）を薄くする制御 =====
   const cellCC = document.getElementById("cell_CC");
   const cellCD = document.getElementById("cell_CD");
@@ -636,7 +641,7 @@ export function startGame(channel, rtc) {
       roundStartAt = null;
     }
 
-    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 確定=${choice}。相手の結果待ち…`, { typewriter:false, force:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 確定=${choiceLabel(choice)}。相手の結果待ち…`, { typewriter:false, force:true });
     const body = { channel, playerId: pid, round: currentRound, choice };
     const resp = await fetch(`${API_BASE}/game/choice`, {
       method: "POST",
@@ -857,7 +862,7 @@ export function startGame(channel, rtc) {
             }
 
             // status.textContent = `Round ${currentRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
-            lastResultText = `Round ${resultRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
+            lastResultText = `Round ${resultRound}/${MAX_ROUNDS} 結果: あなた=${choiceLabel(youChoice)}, 相手=${choiceLabel(oppChoice)} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
 
             // 履歴に追加してEmbedded Dataにも反映（途中経過も欲しければ）
             history.push({
