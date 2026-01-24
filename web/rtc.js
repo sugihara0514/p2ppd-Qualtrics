@@ -55,13 +55,35 @@ export function createRtc(APP_ID) {
       return myUid;
     },
     async leave() {
-      if (remoteAudioTrack) { remoteAudioTrack.stop(); remoteAudioTrack = null; }
-      if (micTrack) { micTrack.stop(); micTrack.close(); micTrack = null; }
-      if (camTrack) { camTrack.stop(); camTrack.close(); camTrack = null; }
-      if (joined) { await client.leave(); joined = false; }
+      // 何が起きても最後まで進む
+      try {
+        if (remoteAudioTrack) {
+          try { remoteAudioTrack.stop(); } catch (e) {}
+          remoteAudioTrack = null;
+        }
 
-      document.getElementById("localContainer").innerHTML = '<span class="label">Local</span>';
-      document.getElementById("remoteContainer").innerHTML = '<span class="label">Remote</span>';
+        if (micTrack) {
+          try { micTrack.stop(); } catch (e) { console.warn("[RTC] mic stop error", e); }
+          try { micTrack.close(); } catch (e) { console.warn("[RTC] mic close error", e); }
+          micTrack = null;
+        }
+
+        if (camTrack) {
+          try { camTrack.stop(); } catch (e) { console.warn("[RTC] cam stop error", e); }
+          try { camTrack.close(); } catch (e) { console.warn("[RTC] cam close error", e); }
+          camTrack = null;
+        }
+
+        if (joined) {
+          try { await client.leave(); } catch (e) { console.warn("[RTC] client.leave error", e); }
+          joined = false;
+        }
+      } finally {
+        const lc = document.getElementById("localContainer");
+        if (lc) lc.innerHTML = '<span class="label">Local</span>';
+        const rc = document.getElementById("remoteContainer");
+        if (rc) rc.innerHTML = '<span class="label">Remote</span>';
+      }
     },
 
     // 外から状態取得（UI更新用）

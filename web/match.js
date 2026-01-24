@@ -68,6 +68,10 @@ export async function enterFlow(APP_ID, useToken = true) {
 
   // ページ離脱時に leave + Cloud Recording 停止 を行うフック
   window.__PD_LEAVE__ = async () => {
+
+    if (leaving) return;
+    leaving = true;
+
     try {
       // まず Agora チャンネルから離脱（カメラOFF）
       await rtc.leave();
