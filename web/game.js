@@ -680,11 +680,21 @@ export function startGame(channel, rtc) {
             history[history.length - 1]?.youTotal ??
             0;
             
-          setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。画面右下の→ボタンで次へ進んでください。`, { typewriter:false, force:true });
+          setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。「→」ボタンで次へ進んでください。`, { typewriter:false, force:true });
           lastResultRoundHandled = s.lastResult?.round ?? lastResultRoundHandled; // このラウンドはもう処理したマーク
           setButtonsEnabled(false);
 
           window.__PD_GAME_OVER__ = true;
+
+          // ゲーム終了時に録画停止 + チャンネル離脱（match.jsの__PD_LEAVE__を呼ぶ）
+          try {
+            if (!window.__PD_LEAVE_CALLED__ && typeof window.__PD_LEAVE__ === "function") {
+              window.__PD_LEAVE_CALLED__ = true; // 二重呼び出し防止
+              window.__PD_LEAVE__();             // match.js内で rtc.leave → record/stop の順に実行される
+            }
+          } catch (e) {
+            console.warn("leave on game over failed", e);
+          }
 
           // qSet("pd_prediction_json", predictionHistory);
           // qSet("pd_emotion_json", emotionHistory);
