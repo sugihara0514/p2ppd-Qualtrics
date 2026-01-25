@@ -261,13 +261,13 @@ const userToChannel = new Map(); // userId -> channel
 
 // 60秒以上の古い待機は除去
 const now = Date.now();
-while (queue.length && now - queue[0].at > 60_000) queue.shift();
+while (queue.length && now - queue[0].at > 60 * 15) queue.shift();
 
 app.post("/join", (req, res) => {
   const userId = uuid();
 
   // 古い待機者を掃除（任意）
-  while (queue.length && Date.now() - queue[0].at > 60_000) queue.shift();
+  while (queue.length && Date.now() - queue[0].at > 60 * 15) queue.shift();
 
   const waiting = queue.shift(); // 誰か待機している？
   if (waiting) {
