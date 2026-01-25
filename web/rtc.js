@@ -57,36 +57,38 @@ export function createRtc(APP_ID) {
     },
     async leave() {
       // 何が起きても最後まで進む
-      const wasJoined = joined;
-
       try {
-        // 先に unpublish → leave（Agora推奨の流れ）
-        if (wasJoined) {
+        // 1) まず unpublish/leave（失敗しても次へ）
+        if (joined) {
           try { await client.unpublish(); } catch (e) { console.warn("[RTC] client.unpublish error", e); }
           try { await client.leave(); } catch (e) { console.warn("[RTC] client.leave error", e); }
         }
 
-        // ローカルトラック停止/解放（DOMが消えてても落ちないよう try/catch）
+        // 2) Agoraトラックの停止（失敗しても次へ）
         if (micTrack) {
           try { micTrack.stop(); } catch (e) { console.warn("[RTC] mic stop error", e); }
           try { micTrack.close(); } catch (e) { console.warn("[RTC] mic close error", e); }
+          // 最後の手段：生トラックを止める
+          try { micTrack.getMediaStreamTrack?.().stop(); } catch (e) {}
           micTrack = null;
         }
 
         if (camTrack) {
           try { camTrack.stop(); } catch (e) { console.warn("[RTC] cam stop error", e); }
           try { camTrack.close(); } catch (e) { console.warn("[RTC] cam close error", e); }
-           camTrack = null;
+          // 最後の手段：生トラックを止める
+          try { camTrack.getMediaStreamTrack?.().stop(); } catch (e) {}
+          camTrack = null;
         }
 
-        // remoteAudioTrack は stop が Prototype 環境で落ちることがあるので、まず null 化優先
+        // remoteAudioTrack は stop が落ちやすいので、基本は参照を捨てるだけ
         if (remoteAudioTrack) {
           try { remoteAudioTrack.stop?.(); } catch (e) {}
           remoteAudioTrack = null;
-        }
+      }
 
       } finally {
-        joined = false; // ★最後に false
+        joined = false;
 
         const lc = document.getElementById("localContainer");
         if (lc) lc.innerHTML = '<span class="label">Local</span>';
