@@ -32,7 +32,14 @@ export function createRtc(APP_ID) {
     }
     if (mediaType === "audio") {
       // 音声が止まっても映像は消さない（必要ならUIだけ更新）
-      remoteAudioTrack = null;
+      // remoteAudioTrack = null;
+
+      remoteAudioTrack = user.audioTrack;
+      try { remoteAudioTrack.play(); } catch(e) {}
+
+      if (!remoteAudioEnabled && typeof remoteAudioTrack.setVolume === "function") {
+        remoteAudioTrack.setVolume(0);
+      }
     }
   });
 
@@ -76,12 +83,12 @@ export function createRtc(APP_ID) {
         }
 
         if (joined) {
-          try { await client.leave(); } catch (e) { console.warn("[RTC] client.leave error", e); }
+          try { await client.unpublish(); } catch (e) { console.warn("[RTC] client.unpublish error", e); }
           joined = false;
         }
 
         if (joined) {
-          try { await client.unpublish(); } catch (e) { console.warn("[RTC] client.unpublish error", e); }
+          try { await client.leave(); } catch (e) { console.warn("[RTC] client.leave error", e); }
           joined = false;
         }
       } finally {
@@ -119,15 +126,29 @@ export function createRtc(APP_ID) {
     async setRemoteAudioEnabled(enabled) {
       remoteAudioEnabled = !!enabled;
 
-      // すでに受信済みのトラックがあれば即反映
-      if (remoteAudioTrack) {
+      if (!remoteAudioTrack) return;
+
+      try {
+        // 可能なら setVolume で無音化（stopしない）
+        if (typeof remoteAudioTrack.setVolume === "function") {
+          remoteAudioTrack.setVolume(remoteAudioEnabled ? 100 : 0);
+
+          // ON に戻すとき、念のため play を保険で（多重生成はしにくい）
+          if (remoteAudioEnabled) {
+            try { remoteAudioTrack.play(); } catch (e) {}
+          }
+          return;
+        }
+
+        // setVolume が無い環境のフォールバック
         if (remoteAudioEnabled) {
           remoteAudioTrack.play();
-          // remoteAudioTrack.setVolume?.(100);
         } else {
-          remoteAudioTrack.stop();      // 相手の音声を止める
-          // remoteAudioTrack.setVolume?.(0);
+          // stop は落ちやすいので、最後の手段として try/catch のみ
+          try { remoteAudioTrack.stop(); } catch (e) {}
         }
+      } catch (e) {
+        console.warn("setRemoteAudioEnabled failed", e);
       }
     },
   };
