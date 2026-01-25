@@ -32,14 +32,7 @@ export function createRtc(APP_ID) {
     }
     if (mediaType === "audio") {
       // 音声が止まっても映像は消さない（必要ならUIだけ更新）
-      // remoteAudioTrack = null;
-
-      remoteAudioTrack = user.audioTrack;
-      try { remoteAudioTrack.play(); } catch(e) {}
-
-      if (!remoteAudioEnabled && typeof remoteAudioTrack.setVolume === "function") {
-        remoteAudioTrack.setVolume(0);
-      }
+      remoteAudioTrack = null;
     }
   });
 
@@ -64,12 +57,16 @@ export function createRtc(APP_ID) {
     },
     async leave() {
       // 何が起きても最後まで進む
+      const wasJoined = joined;
+
       try {
-        if (remoteAudioTrack) {
-          try { remoteAudioTrack.stop(); } catch (e) {}
-          remoteAudioTrack = null;
+        // 先に unpublish → leave（Agora推奨の流れ）
+        if (wasJoined) {
+          try { await client.unpublish(); } catch (e) { console.warn("[RTC] client.unpublish error", e); }
+          try { await client.leave(); } catch (e) { console.warn("[RTC] client.leave error", e); }
         }
 
+        // ローカルトラック停止/解放（DOMが消えてても落ちないよう try/catch）
         if (micTrack) {
           try { micTrack.stop(); } catch (e) { console.warn("[RTC] mic stop error", e); }
           try { micTrack.close(); } catch (e) { console.warn("[RTC] mic close error", e); }
@@ -79,19 +76,18 @@ export function createRtc(APP_ID) {
         if (camTrack) {
           try { camTrack.stop(); } catch (e) { console.warn("[RTC] cam stop error", e); }
           try { camTrack.close(); } catch (e) { console.warn("[RTC] cam close error", e); }
-          camTrack = null;
+           camTrack = null;
         }
 
-        if (joined) {
-          try { await client.unpublish(); } catch (e) { console.warn("[RTC] client.unpublish error", e); }
-          joined = false;
+        // remoteAudioTrack は stop が Prototype 環境で落ちることがあるので、まず null 化優先
+        if (remoteAudioTrack) {
+          try { remoteAudioTrack.stop?.(); } catch (e) {}
+          remoteAudioTrack = null;
         }
 
-        if (joined) {
-          try { await client.leave(); } catch (e) { console.warn("[RTC] client.leave error", e); }
-          joined = false;
-        }
       } finally {
+        joined = false; // ★最後に false
+
         const lc = document.getElementById("localContainer");
         if (lc) lc.innerHTML = '<span class="label">Local</span>';
         const rc = document.getElementById("remoteContainer");
