@@ -66,6 +66,8 @@ export async function enterFlow(APP_ID, useToken = true) {
   startGame(channel, rtc);
   matching = false;
 
+  let leaving = false;
+
   // ページ離脱時に leave + Cloud Recording 停止 を行うフック
   window.__PD_LEAVE__ = async () => {
 
