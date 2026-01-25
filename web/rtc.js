@@ -24,16 +24,17 @@ export function createRtc(APP_ID) {
       }
     }
   });
+
   client.on("user-unpublished", (user, mediaType) => {
-  if (mediaType === "video") {
-    // 映像が止まったときだけ remoteContainer を消す
-    document.getElementById("remoteContainer").innerHTML = '<span class="label">Remote</span>';
-  }
-  if (mediaType === "audio") {
-    // 音声が止まっても映像は消さない（必要ならUIだけ更新）
-    remoteAudioTrack = null;
-  }
-});
+    if (mediaType === "video") {
+      // 映像が止まったときだけ remoteContainer を消す
+      document.getElementById("remoteContainer").innerHTML = '<span class="label">Remote</span>';
+    }
+    if (mediaType === "audio") {
+      // 音声が止まっても映像は消さない（必要ならUIだけ更新）
+      remoteAudioTrack = null;
+    }
+  });
 
   async function applyMuteState() {
     // join前に押されても安全に無視できるように
@@ -76,6 +77,11 @@ export function createRtc(APP_ID) {
 
         if (joined) {
           try { await client.leave(); } catch (e) { console.warn("[RTC] client.leave error", e); }
+          joined = false;
+        }
+
+        if (joined) {
+          try { await client.unpublish(); } catch (e) { console.warn("[RTC] client.unpublish error", e); }
           joined = false;
         }
       } finally {
