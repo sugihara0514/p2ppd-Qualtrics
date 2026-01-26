@@ -10,6 +10,24 @@ const API_BASE = "https://multimodalpd-9qz7.onrender.com";
 let matching = false;       // 二重起動防止
 let matchTimer = null;      // setInterval のハンドル
 
+let queueUserId = null;
+
+window.__PD_CANCEL_MATCH__ = async () => {
+  try {
+    if (matchTimer) { clearInterval(matchTimer); matchTimer = null; }
+    if (queueUserId) {
+      await fetch(`${API_BASE}/leave`, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ userId: queueUserId }),
+      });
+      queueUserId = null;
+    }
+  } catch (e) {
+    console.warn("[MATCH] cancel failed", e);
+  }
+};
+
 export async function enterFlow(APP_ID, useToken = true) {
   console.log("[MATCH] enterFlow called with APP_ID=", APP_ID);
   if (matching) return;
@@ -25,6 +43,7 @@ export async function enterFlow(APP_ID, useToken = true) {
     console.log("[MATCH] paired immediately:", channel);
   } else {
     const userId = reg.userId;
+    queueUserId = userId;
     console.log("[MATCH] waiting. userId=", userId);
 
     // 2) /match をポーリング

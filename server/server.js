@@ -557,6 +557,49 @@ app.get("/game/state", (req, res) => {
     over: g.over,
     stage: g.stage || "choice",
     lastResult: g.lastResult, // 直近の確定結果（null のこともある）
-    myTotal
+    myTotal,
+    overReason: g.overReason || null,
+    leftBy: g.leftBy || null,
+    leftReason: g.leftReason || null,
   });
+});
+
+app.post("/leave", (req, res) => {
+  const { userId } = req.body || {};
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  // queue から削除
+  for (let i = queue.length - 1; i >= 0; i--) {
+    if (queue[i].id === userId) queue.splice(i, 1);
+  }
+
+  // 既にチャンネル割当済みなら紐付けも削除（保険）
+  const ch = userToChannel.get(userId);
+  if (ch) {
+    userToChannel.delete(userId);
+    const room = rooms.get(ch);
+    if (room) {
+      room.users = room.users.filter(u => u !== userId);
+      if (room.users.length === 0) rooms.delete(ch);
+      else rooms.set(ch, room);
+    }
+  }
+
+  return res.json({ ok: true });
+});
+
+app.post("/game/leave", (req, res) => {
+  const { channel, playerId, reason } = req.body || {};
+  if (!channel || !playerId) return res.status(400).json({ error: "channel and playerId required" });
+
+  const g = games.get(channel);
+  if (!g) return res.json({ ok: true, exists: false }); // idempotent
+
+  g.over = true;
+  g.stage = "done";
+  g.overReason = "player_left";
+  g.leftBy = String(playerId);
+  g.leftReason = reason || "user_exit";
+
+  return res.json({ ok: true });
 });

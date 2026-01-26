@@ -679,8 +679,18 @@ export function startGame(channel, rtc) {
             s.lastResult?.totals?.[pid] ??
             history[history.length - 1]?.youTotal ??
             0;
+
+          const reason = s.overReason || "done";
+          qSet("pd_end_reason", reason);              // ★追加
+          qSet("pd_left_reason", s.leftReason || ""); // ★任意
+
+          if (reason === "player_left") {
+            setStatus("相手が離脱したためゲームを終了します。「→」で次へ進んでください。", { typewriter:false, force:true });
+          } else {
+            setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。「→」ボタンで次へ進んでください。`, { typewriter:false, force:true });
+          }
             
-          setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。「→」ボタンで次へ進んでください。`, { typewriter:false, force:true });
+          // setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。「→」ボタンで次へ進んでください。`, { typewriter:false, force:true });
           lastResultRoundHandled = s.lastResult?.round ?? lastResultRoundHandled; // このラウンドはもう処理したマーク
           setButtonsEnabled(false);
 
@@ -939,6 +949,25 @@ export function startGame(channel, rtc) {
       }
     }, 800); // 800ms間隔ポーリング
   }
+
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  // 外部（離脱ボタン）から呼べるように公開
+  window.__PD_GAME_ABORT__ = async (reason = "user_exit") => {
+    stopPolling();
+    try {
+      await fetch(`${API_BASE}/game/leave`, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ channel, playerId: pid, reason }),
+      });
+    } catch (e) {
+      console.warn("game/leave failed", e);
+    }
+  };
+
   function setButtonsEnabled(on) {
     if (green_button) green_button.disabled = !on;
     if (blue_button) blue_button.disabled = !on;
