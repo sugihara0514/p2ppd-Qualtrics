@@ -5,7 +5,7 @@ import { joinQueue, pollMatch, getToken } from "./api.js";
 import { createRtc } from "./rtc.js";
 import { startGame } from "./game.js";
 
-const API_BASE = "https://multimodalpd.onrender.com";
+const API_BASE = "https://multimodalpd-9qz7.onrender.com";
 
 let matching = false;       // 二重起動防止
 let matchTimer = null;      // setInterval のハンドル

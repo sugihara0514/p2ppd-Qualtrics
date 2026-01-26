@@ -1,6 +1,6 @@
 // api.js
 // renderのリンク
-export const API_BASE = "https://multimodalpd.onrender.com"; 
+export const API_BASE = "https://multimodalpd-9qz7.onrender.com"; 
 
 export async function joinQueue() {
   const r = await fetch(`${API_BASE}/join`, { method: "POST" });

@@ -11,7 +11,7 @@ const MAX_ROUNDS = 5; // 本番は20
 // QualtricsのURLを許可する
 const allowedOrigin = [
   "https://survey.syd1.qualtrics.com", 
-  "https://multimodalpd-static.onrender.com",
+  "https://multimodalpd-static-65p9.onrender.com",
 ];
 const corsOptions = {
   origin: allowedOrigin,

@@ -414,7 +414,7 @@ export function startGame(channel, rtc) {
   // mental_sliders は「常に表示してグレーアウト」で運用
   setGray(emoUI, true);
 
-  const API_BASE = "https://multimodalpd.onrender.com"; // APIのURL
+  const API_BASE = "https://multimodalpd-9qz7.onrender.com"; // APIのURL
   // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
   let pid =
     (window.__PD__ && window.__PD__.responseId) ||
