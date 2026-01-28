@@ -618,3 +618,8 @@ app.post("/game/leave", (req, res) => {
 
   return res.json({ ok: true });
 });
+
+app.post("/agora/ncs", express.json({ type: "*/*" }), (req, res) => {
+  console.log("[NCS]", JSON.stringify(req.body, null, 2));
+  res.status(200).json({ ok: true }); // 10秒以内に200を返すのが重要
+});
