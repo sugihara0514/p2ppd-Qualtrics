@@ -248,6 +248,8 @@ async function stopCloudRecording(channel) {
       console.error("[recording] stop failed", stopData);
     } else {
       console.log("[recording] stopped", channel, stopData);
+      console.log("[recording] uploadingStatus", stopData?.serverResponse?.uploadingStatus);
+      console.log("[recording] fileList", JSON.stringify(stopData?.serverResponse?.fileList, null, 2));
     }
   } catch (err) {
     console.error("[recording] stop error", err);
