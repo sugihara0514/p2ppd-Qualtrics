@@ -53,7 +53,7 @@ function safePrefixSegment(channel) {
 // 保存先ストレージ設定（Supabase Storage を S3互換で使う想定）
 function buildStorageConfig(channel) {
   const vendor = Number(process.env.AGORA_STORAGE_VENDOR || 11); // 11 = S3互換
-  const region = Number(process.env.AGORA_STORAGE_REGION || 10); // 例: AP_NORTHEAST_1 相当
+  const region = Number(process.env.AGORA_STORAGE_REGION || 0);
   const bucket = process.env.AGORA_STORAGE_BUCKET;
   const accessKey = process.env.AGORA_STORAGE_ACCESS_KEY;
   const secretKey = process.env.AGORA_STORAGE_SECRET_KEY;
