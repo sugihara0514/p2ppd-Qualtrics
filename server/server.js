@@ -27,6 +27,21 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
 
+require("dotenv").config(); // これがある場合はこの直後
+
+console.log("[env-check]", {
+  hasSUPABASE_URL: !!process.env.SUPABASE_URL,
+  hasSUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  supabaseUrlHost: (process.env.SUPABASE_URL || "").split("/").slice(0,3).join("/"),
+  hasAGORA_STORAGE_ACCESS_KEY: !!process.env.AGORA_STORAGE_ACCESS_KEY,
+  hasAGORA_STORAGE_SECRET_KEY: !!process.env.AGORA_STORAGE_SECRET_KEY,
+  AGORA_STORAGE_ENDPOINT: process.env.AGORA_STORAGE_ENDPOINT,
+  AGORA_STORAGE_BUCKET: process.env.AGORA_STORAGE_BUCKET,
+  AGORA_STORAGE_VENDOR: process.env.AGORA_STORAGE_VENDOR,
+  AGORA_STORAGE_REGION: process.env.AGORA_STORAGE_REGION,
+});
+
+
 const APP_ID = process.env.AGORA_APP_ID;
 const CERT   = process.env.AGORA_APP_CERT;
 const TTL    = Number(process.env.TOKEN_TTL_SEC || 3600);
