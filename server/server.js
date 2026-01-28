@@ -27,8 +27,6 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
 
-require("dotenv").config(); // これがある場合はこの直後
-
 console.log("[env-check]", {
   hasSUPABASE_URL: !!process.env.SUPABASE_URL,
   hasSUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
