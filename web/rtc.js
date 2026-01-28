@@ -28,7 +28,9 @@ export function createRtc(APP_ID) {
   client.on("user-unpublished", (user, mediaType) => {
     if (mediaType === "video") {
       // 映像が止まったときだけ remoteContainer を消す
-      document.getElementById("remoteContainer").innerHTML = '<span class="label">Remote</span>';
+      // document.getElementById("remoteContainer").innerHTML = '<span class="label">Remote</span>';
+      const rc = document.getElementById("remoteContainer");
+      if (rc) rc.innerHTML = '<span class="label">Remote</span>';
     }
     if (mediaType === "audio") {
       // 音声が止まっても映像は消さない（必要ならUIだけ更新）

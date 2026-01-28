@@ -93,25 +93,46 @@ export async function enterFlow(APP_ID, useToken = true) {
     if (leaving) return;
     leaving = true;
 
+    // try {
+    //   // まず Agora チャンネルから離脱（カメラOFF）
+    //   await rtc.leave();
+    // } catch (e) {
+    //   console.warn("[MATCH] rtc.leave error", e);
+    // }
+
+    // try {
+    //   // 次に録画停止APIを叩く
+    //   if (channel) {
+    //     await fetch(`${API_BASE}/record/stop`, {
+    //       method: "POST",
+    //       headers: { "Content-Type": "application/json" },
+    //       body: JSON.stringify({ channel }),
+    //     });
+    //     console.log("[MATCH] record/stop sent for", channel);
+    //   }
+    // } catch (e) {
+    //   console.warn("[MATCH] record/stop error", e);
+    // }
+    
+    try {
+      // 次に録画停止APIを叩く
+      if (channel) {
+        fetch(`${API_BASE}/record/stop`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channel }),
+          keepalive: true,
+        });
+      }
+    } catch (e) {
+      console.warn("[MATCH] record/stop error", e);
+    }
+
     try {
       // まず Agora チャンネルから離脱（カメラOFF）
       await rtc.leave();
     } catch (e) {
       console.warn("[MATCH] rtc.leave error", e);
-    }
-
-    try {
-      // 次に録画停止APIを叩く
-      if (channel) {
-        await fetch(`${API_BASE}/record/stop`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ channel }),
-        });
-        console.log("[MATCH] record/stop sent for", channel);
-      }
-    } catch (e) {
-      console.warn("[MATCH] record/stop error", e);
     }
   };
 }
