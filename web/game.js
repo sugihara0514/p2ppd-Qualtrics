@@ -128,7 +128,7 @@ export function startGame(channel, rtc) {
 
 
   // ラウンド数
-  const MAX_ROUNDS = 5; // 本番は20
+  const MAX_ROUNDS = 20; // 本番は20
   const round_N = document.getElementById("round_N");
 
   function renderRound() {

@@ -6,7 +6,7 @@ import { v4 as uuid } from "uuid";
 import pkg from "agora-access-token";
 const { RtcTokenBuilder, RtcRole } = pkg;
 
-const MAX_ROUNDS = 5; // 本番は20
+const MAX_ROUNDS = 20; // 本番は20
 
 // QualtricsのURLを許可する
 const allowedOrigin = [
@@ -274,7 +274,7 @@ const queue = []; // [{id, at}]
 const rooms = new Map(); // channel -> { users:[id1,id2] }
 const userToChannel = new Map(); // userId -> channel
 
-// 60秒以上の古い待機は除去
+// 15分以上の古い待機は除去
 const now = Date.now();
 while (queue.length && now - queue[0].at > 60 * 15 * 1000) queue.shift();
 
@@ -357,7 +357,7 @@ app.post("/game/join", async (req, res) => {
   if (!g.totals.has(String(playerId))) g.totals.set(String(playerId), 0);
 
   // プレイヤーが2人揃ったら録画開始（既に開始済みなら内部でなにもしない）
-  // 一時録画停止中!
+  // 録画停止してテストする場合はここをコメントアウト
   if (g.players.size >= 2) {
     startCloudRecording(channel); // await してもいいが、レスポンスを遅らせたくないなら fire-and-forget でOK
   }
