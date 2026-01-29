@@ -8,10 +8,17 @@ export function startGame(channel, rtc) {
 
   let baselineEmotionDone = false;
   let emotionRoundOverride = null; // 0回目用に round を上書き
+  let baselineEmotionStartLogged = false;
 
   function showBaselineEmotionUI() {
     baselineEmotionDone = false;
     emotionRoundOverride = 0;
+
+    // 0回目感情フェーズ開始（Unix ms）
+    if (!baselineEmotionStartLogged) {
+      baselineEmotionStartLogged = true;
+      qSetRound(0, { emotionStartAt: Date.now() });
+    }
 
     setLayout("emopred");
 
@@ -334,7 +341,7 @@ export function startGame(channel, rtc) {
   const ANIM_MS = 1000; // time_animation と同じ
 
   // フェードの予約を要素ごとに管理
-  const __fadeTimers = new WeakMap();fadeInEnable
+  const __fadeTimers = new WeakMap();
 
   function showBase(el) {
     if (!el) return;
@@ -459,6 +466,9 @@ export function startGame(channel, rtc) {
   if (window.Qualtrics && Qualtrics.SurveyEngine) {
     qSet("pd_player_id", String(pid));
   }
+
+  // 録画ファイル名にも使われるroom名（channel）を保存
+  qSet("pd_room", String(channel));
 
   let currentRound = 1;
   let emotionForRound = null; // 「感情（＋次回予測）」が対応するラウンド
@@ -821,6 +831,9 @@ export function startGame(channel, rtc) {
 
 
           if (!hasChosenThisRound && !canChoose) {
+            // choiceフェーズ開始（Unix ms）
+            qSetRound(currentRound, { choiceStartAt: Date.now() });
+
             setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑か青を選び、次へで確定してください`, {
               typewriter: true,
               force: true
@@ -853,6 +866,9 @@ export function startGame(channel, rtc) {
             // 既にこのラウンドの感情UIを開いているなら何もしない（無限初期化防止）
             if (emotionUIShownForRound === resultRound) return;
             emotionUIShownForRound = resultRound;
+
+            // emotionフェーズ開始（Unix ms）
+            qSetRound(resultRound, { emotionStartAt: Date.now() });
 
             const pair = Object.entries(s.lastResult.choices); // [[pid, "C"|"D"], ...]
             const youChoice = s.lastResult.choices[pid];
