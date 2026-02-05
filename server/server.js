@@ -358,9 +358,9 @@ app.post("/game/join", async (req, res) => {
 
   // プレイヤーが2人揃ったら録画開始（既に開始済みなら内部でなにもしない）
   // 録画停止してテストする場合はここをコメントアウト
-  if (g.players.size >= 2) {
-    startCloudRecording(channel); // await してもいいが、レスポンスを遅らせたくないなら fire-and-forget でOK
-  }
+  // if (g.players.size >= 2) {
+  //   startCloudRecording(channel); // await してもいいが、レスポンスを遅らせたくないなら fire-and-forget でOK
+  // }
 
   return res.json({
     ok: true,
