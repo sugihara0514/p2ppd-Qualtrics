@@ -269,52 +269,281 @@ async function stopCloudRecording(channel) {
   }
 }
 
-// --- 待機と部屋管理 ---
-const queue = []; // [{id, at}]
-const rooms = new Map(); // channel -> { users:[id1,id2] }
-const userToChannel = new Map(); // userId -> channel
+// --- 待機と部屋管理（resume / heartbeat / limited rematch）---
+const WAIT_TTL_MS = 15 * 60 * 1000;
+const HEARTBEAT_TTL_MS = 15 * 1000;
+const REMATCH_GRACE_MS = 45 * 1000;
 
-// 15分以上の古い待機は除去
-const now = Date.now();
-while (queue.length && now - queue[0].at > 60 * 15 * 1000) queue.shift();
+const queue = [];                  // participantId[]
+const participants = new Map();   // participantId -> { participantId, resumeToken, channel, lastSeenAt, disconnectedAt, finalLeft }
+const rooms = new Map();          // channel -> { channel, users:[participantId1, participantId2], createdAt }
 
-app.post("/join", (req, res) => {
-  const userId = uuid();
+function nowMs() {
+  return Date.now();
+}
 
-  // 古い待機者を掃除（任意）
-  while (queue.length && Date.now() - queue[0].at > 60 * 15 * 1000) queue.shift();
+function touchParticipant(p) {
+  p.lastSeenAt = nowMs();
+  p.disconnectedAt = null;
+  p.finalLeft = false;
+  return p;
+}
 
-  const waiting = queue.shift(); // 誰か待機している？
-  if (waiting) {
-    const a = waiting.id;
-    const b = userId;
-    const channel = `room-${uuid()}`;
-    rooms.set(channel, { users: [a, b] });
-    userToChannel.set(a, channel);
-    userToChannel.set(b, channel);
-    return res.json({ status: "paired", channel, userId });
+function markPaused(p) {
+  if (!p) return;
+  if (!p.disconnectedAt) p.disconnectedAt = nowMs();
+}
+
+function refreshConnectivity(p) {
+  if (!p) return null;
+  if (!p.disconnectedAt && nowMs() - p.lastSeenAt > HEARTBEAT_TTL_MS) {
+    p.disconnectedAt = p.lastSeenAt;
+  }
+  return p;
+}
+
+function isConnected(p) {
+  refreshConnectivity(p);
+  return !!p && !p.finalLeft && !p.disconnectedAt;
+}
+
+function cleanQueue() {
+  for (let i = queue.length - 1; i >= 0; i--) {
+    const id = queue[i];
+    const p = participants.get(id);
+    if (!p) {
+      queue.splice(i, 1);
+      continue;
+    }
+    refreshConnectivity(p);
+    if (p.finalLeft || p.channel || nowMs() - p.lastSeenAt > WAIT_TTL_MS) {
+      queue.splice(i, 1);
+    }
+  }
+}
+
+function removeFromQueue(participantId) {
+  for (let i = queue.length - 1; i >= 0; i--) {
+    if (queue[i] === participantId) queue.splice(i, 1);
+  }
+}
+
+function dequeueWaitingOpponent(exceptId) {
+  cleanQueue();
+  while (queue.length) {
+    const id = queue.shift();
+    if (id === exceptId) continue;
+    const p = participants.get(id);
+    if (!p) continue;
+    refreshConnectivity(p);
+    if (p.finalLeft || p.channel) continue;
+    if (nowMs() - p.lastSeenAt > WAIT_TTL_MS) continue;
+    return p;
+  }
+  return null;
+}
+
+function getOpponentId(channel, participantId) {
+  const room = rooms.get(channel);
+  if (!room) return null;
+  return room.users.find((id) => id !== participantId) || null;
+}
+
+function buildMatchResponse(p) {
+  if (p.channel && rooms.has(p.channel)) {
+    return {
+      status: "paired",
+      participantId: p.participantId,
+      userId: p.participantId,
+      resumeToken: p.resumeToken,
+      channel: p.channel,
+    };
+  }
+  if (queue.includes(p.participantId)) {
+    return {
+      status: "waiting",
+      participantId: p.participantId,
+      userId: p.participantId,
+      resumeToken: p.resumeToken,
+    };
+  }
+  return {
+    status: "idle",
+    participantId: p.participantId,
+    userId: p.participantId,
+    resumeToken: p.resumeToken,
+  };
+}
+
+function pairParticipants(a, b) {
+  const channel = `room-${uuid()}`;
+  rooms.set(channel, {
+    channel,
+    users: [a.participantId, b.participantId],
+    createdAt: nowMs(),
+  });
+  a.channel = channel;
+  b.channel = channel;
+  touchParticipant(a);
+  touchParticipant(b);
+  return channel;
+}
+
+function enqueueOrPair(p) {
+  cleanQueue();
+
+  if (p.channel && rooms.has(p.channel)) {
+    return buildMatchResponse(p);
   }
 
-  // 誰もいなければ自分を待機に
-  queue.push({ id: userId, at: Date.now() });
-  res.json({ status: "waiting", userId });
+  if (queue.includes(p.participantId)) {
+    return buildMatchResponse(p);
+  }
+
+  const other = dequeueWaitingOpponent(p.participantId);
+  if (other) {
+    const channel = pairParticipants(other, p);
+    return {
+      status: "paired",
+      participantId: p.participantId,
+      userId: p.participantId,
+      resumeToken: p.resumeToken,
+      channel,
+    };
+  }
+
+  queue.push(p.participantId);
+  return {
+    status: "waiting",
+    participantId: p.participantId,
+    userId: p.participantId,
+    resumeToken: p.resumeToken,
+  };
+}
+
+function findAuthedParticipant(participantId, resumeToken) {
+  const p = participants.get(String(participantId || ""));
+  if (!p) return null;
+  if (!resumeToken) return null;
+  if (p.resumeToken !== String(resumeToken)) return null;
+  return p;
+}
+
+async function finalizeRoom(channel, { overReason = "player_left", leftBy = null, leftReason = "user_exit" } = {}) {
+  const room = rooms.get(channel);
+  if (!room) return;
+
+  const g = games.get(channel);
+  if (g && !g.over) {
+    g.over = true;
+    g.stage = "done";
+    g.overReason = overReason;
+    g.leftBy = leftBy;
+    g.leftReason = leftReason;
+  }
+
+  for (const pid of room.users) {
+    const p = participants.get(pid);
+    if (p && p.channel === channel) p.channel = null;
+  }
+
+  rooms.delete(channel);
+  await stopCloudRecording(channel);
+}
+
+app.post("/join", (req, res) => {
+  const participantId = String(req.body?.participantId || "");
+  const resumeToken = String(req.body?.resumeToken || "");
+  if (!participantId) {
+    return res.status(400).json({ error: "participantId required" });
+  }
+
+  let p = participants.get(participantId);
+
+  // 正しい resumeToken があるなら復帰
+  if (p && resumeToken && p.resumeToken === resumeToken && !p.finalLeft) {
+    touchParticipant(p);
+    return res.json(enqueueOrPair(p));
+  }
+
+  // 既存の active session があるのに token なし/不一致なら拒否
+  if (p && !p.finalLeft && (p.channel || queue.includes(participantId))) {
+    return res.status(409).json({ error: "resume_token_required" });
+  }
+
+  if (!p) {
+    p = {
+      participantId,
+      resumeToken: uuid(),
+      channel: null,
+      lastSeenAt: nowMs(),
+      disconnectedAt: null,
+      finalLeft: false,
+    };
+    participants.set(participantId, p);
+  } else {
+    p.resumeToken = uuid();
+    p.channel = null;
+    p.finalLeft = false;
+    p.disconnectedAt = null;
+    p.lastSeenAt = nowMs();
+  }
+
+  return res.json(enqueueOrPair(p));
 });
 
 app.get("/match", (req, res) => {
-  const userId = String(req.query.userId || "");
-  const channel = userToChannel.get(userId);
+  const participantId = String(req.query.participantId || req.query.userId || "");
+  const resumeToken = String(req.query.resumeToken || "");
+  const p = findAuthedParticipant(participantId, resumeToken);
+  if (!p) return res.status(404).json({ status: "not_found" });
 
-  if (channel) {
-    return res.json({ status: "paired", channel });
-  }
-  return res.json({ status: "waiting" });
+  touchParticipant(p);
+  return res.json(buildMatchResponse(p));
+});
+
+app.post("/heartbeat", (req, res) => {
+  const { participantId, resumeToken } = req.body || {};
+  const p = findAuthedParticipant(participantId, resumeToken);
+  if (!p) return res.status(401).json({ error: "unauthorized" });
+
+  touchParticipant(p);
+
+  const oppId = p.channel ? getOpponentId(p.channel, p.participantId) : null;
+  const opp = oppId ? participants.get(oppId) : null;
+  refreshConnectivity(opp);
+
+  const opponentConnected = !!oppId && isConnected(opp);
+  const rematchEligible = !!oppId && !!opp?.disconnectedAt && (nowMs() - opp.disconnectedAt >= REMATCH_GRACE_MS);
+
+  return res.json({
+    ok: true,
+    channel: p.channel || null,
+    opponentConnected,
+    rematchEligible,
+  });
+});
+
+app.post("/pause", (req, res) => {
+  const { participantId, resumeToken } = req.body || {};
+  const p = findAuthedParticipant(participantId, resumeToken);
+  if (!p) return res.json({ ok: true });
+  markPaused(p);
+  return res.json({ ok: true });
 });
 
 // --- Agora Token（本番用） ---
 app.get("/rtc/token", (req, res) => {
   const channel = (req.query.channel || "").trim();
   const uid     = Number(req.query.uid ?? 0);
+  const participantId = String(req.query.participantId || "");
+  const resumeToken = String(req.query.resumeToken || "");
   if (!channel) return res.status(400).json({ error: "channel required" });
+
+  const p = findAuthedParticipant(participantId, resumeToken);
+  if (!p || p.channel !== channel) {
+    return res.status(403).json({ error: "forbidden" });
+  }
 
   const role = RtcRole.PUBLISHER;
   const expire = Math.floor(Date.now()/1000) + TTL;
@@ -333,6 +562,40 @@ app.listen(PORT, () => console.log(`API on :${PORT}`));
 const PAYOFF = { CC:[2,2], CD:[0,3], DC:[3,0], DD:[1,1] };
 const games = new Map();
 
+function buildGameSnapshot(channel, playerId) {
+  const g = games.get(channel);
+  if (!g) return { exists: false };
+
+  const meId = String(playerId || "");
+  const myTotal = g.totals.get(meId) || 0;
+
+  const room = rooms.get(channel);
+  const oppId = room?.users?.find((id) => id !== meId) || null;
+  const opp = oppId ? participants.get(oppId) : null;
+  refreshConnectivity(opp);
+
+  const opponentConnected = !!oppId && isConnected(opp);
+  const rematchEligible = !!oppId && !!opp?.disconnectedAt && (nowMs() - opp.disconnectedAt >= REMATCH_GRACE_MS);
+
+  return {
+    exists: true,
+    round: g.round,
+    over: g.over,
+    stage: g.stage || "choice",
+    lastResult: g.lastResult,
+    myTotal,
+    overReason: g.overReason || null,
+    leftBy: g.leftBy || null,
+    leftReason: g.leftReason || null,
+    baselineDone: g.ready?.has(meId) || false,
+    myChoiceSubmitted: g.choices.has(meId),
+    myEmotionSubmitted: g.emotions.has(meId),
+    opponentConnected,
+    rematchEligible,
+    opponentId: oppId,
+  };
+}
+
 // ゲーム参加（channel と client側で作った playerId を紐づけ）
 app.post("/game/join", async (req, res) => {
   const { channel, playerId } = req.body || {};
@@ -347,6 +610,8 @@ app.post("/game/join", async (req, res) => {
       predictions: new Map(),    // playerId -> predictionValue
       choices: new Map(),        // playerId -> "C" | "D"
       emotions: new Map(),       // playerId -> { emo1, emo2, emo3, ・・・ }
+      choiceLedger: new Map(),   // `${round}:${playerId}` -> choice
+      emotionLedger: new Map(),  // `${round}:${playerId}` -> emotion payload
       totals: new Map(),
       lastResult: null,
       over: false,
@@ -364,11 +629,9 @@ app.post("/game/join", async (req, res) => {
 
   return res.json({
     ok: true,
-    round: g.round,
     players: Array.from(g.players),
     totals: Object.fromEntries(g.totals.entries()),
-    over: g.over,
-    lastResult: g.lastResult
+    ...buildGameSnapshot(channel, playerId),
   });
 });
 
@@ -433,11 +696,26 @@ app.post("/game/choice", async (req, res) => {
   if (g.over) return res.status(400).json({ error: "game_over" });
   if (!["C","D"].includes(choice)) return res.status(400).json({ error: "invalid_choice", choice });
 
-  // ラウンド厳密一致にこだわらず、サーバ側の現在ラウンドを採用
+  const roundKey = `${Number(round)}:${String(playerId)}`;
+  if (g.choiceLedger?.has(roundKey)) {
+    return res.json({ ok: true, duplicate: true, serverRound: g.round, stage: g.stage });
+  }
+
   const rNow = g.round;
   if (Number(round) !== rNow) {
-    // 参考情報として返すだけで、処理は続行
-    console.warn("[CHOICE] round mismatch: client=", round, "server=", rNow);
+    return res.status(409).json({
+      error: "round_mismatch",
+      serverRound: rNow,
+      stage: g.stage,
+    });
+   }
+
+  if (g.stage !== "choice") {
+    return res.status(409).json({
+      error: "invalid_stage",
+      serverRound: rNow,
+      stage: g.stage,
+    });
   }
 
   // プレイヤー登録漏れ対策：/game/join を呼んでいなくても一応登録
@@ -446,6 +724,7 @@ app.post("/game/choice", async (req, res) => {
 
   // 記録
   g.choices.set(String(playerId), choice);
+  g.choiceLedger.set(roundKey, choice);
 
   // 2人そろったら判定
   if (g.choices.size >= 2 && g.players.size >= 2) {
@@ -470,7 +749,7 @@ app.post("/game/choice", async (req, res) => {
     g.stage = "emotion";
   }
 
-  return res.json({ ok: true, serverRound: g.round });
+  return res.json({ ok: true, serverRound: g.round, stage: g.stage });
 });
 
 // 感情スライダーの結果を送信
@@ -489,15 +768,46 @@ app.post("/game/emotion", (req, res) => {
   if (!g) return res.status(400).json({ error: "game_not_found", channel });
   if (g.over) return res.status(400).json({ error: "game_over" });
 
+  const roundKey = `${Number(round)}:${String(playerId)}`;
+  if (g.emotionLedger?.has(roundKey)) {
+    return res.json({ ok: true, duplicate: true, round: g.round, stage: g.stage, over: g.over });
+  }
+
   const rNow = g.round;
   if (Number(round) !== rNow) {
-    console.warn("[EMOTION] round mismatch: client=", round, "server=", rNow);
+    return res.status(409).json({
+      error: "round_mismatch",
+      serverRound: rNow,
+      stage: g.stage,
+    });
+  }
+
+  if (g.stage !== "emotion") {
+    return res.status(409).json({
+      error: "invalid_stage",
+      serverRound: rNow,
+      stage: g.stage,
+    });
   }
 
   if (!g.stage) g.stage = "emotion";
   g.players.add(String(playerId));
 
   g.emotions.set(String(playerId), {
+    round: rNow,
+    emo1: Number(emo1),
+    emo2: Number(emo2),
+    emo3: Number(emo3),
+    emo4: Number(emo4),
+    emo5: Number(emo5),
+    emo6: Number(emo6),
+    emo7: Number(emo7),
+    emo8: Number(emo8),
+    emo9: Number(emo9),
+    emo10: Number(emo10),
+  });
+
+  g.emotionLedger.set(roundKey, {
     round: rNow,
     emo1: Number(emo1),
     emo2: Number(emo2),
@@ -555,50 +865,44 @@ app.post("/game/ready", (req, res) => {
     g.stage = "waiting";
   }
 
-  return res.json({ ok: true, stage: g.stage, ready: g.ready.size, players: g.players.size });
+  return res.json({
+    ok: true,
+    stage: g.stage,
+    ready: g.ready.size,
+    players: g.players.size,
+    ...buildGameSnapshot(channel, playerId),
+  });
 });
 
 // クライアントが状態をポーリングで取得
 app.get("/game/state", (req, res) => {
   const channel = String(req.query.channel || "");
   const playerId = String(req.query.playerId || "");
-  const g = games.get(channel);
-  if (!g) return res.json({ exists: false });
-
-  const myTotal = g.totals.get(playerId) || 0;
-  return res.json({
-    exists: true,
-    round: g.round,
-    over: g.over,
-    stage: g.stage || "choice",
-    lastResult: g.lastResult, // 直近の確定結果（null のこともある）
-    myTotal,
-    overReason: g.overReason || null,
-    leftBy: g.leftBy || null,
-    leftReason: g.leftReason || null,
-  });
+  return res.json(buildGameSnapshot(channel, playerId));
 });
 
-app.post("/leave", (req, res) => {
-  const { userId } = req.body || {};
-  if (!userId) return res.status(400).json({ error: "userId required" });
+app.post("/leave", async (req, res) => {
+  const participantId = String(req.body?.participantId || req.body?.userId || "");
+  const resumeToken = String(req.body?.resumeToken || "");
+  const reason = String(req.body?.reason || "user_exit");
+  if (!participantId) return res.status(400).json({ error: "participantId required" });
 
-  // queue から削除
-  for (let i = queue.length - 1; i >= 0; i--) {
-    if (queue[i].id === userId) queue.splice(i, 1);
+  const p = findAuthedParticipant(participantId, resumeToken);
+  if (!p) return res.json({ ok: true }); // idempotent
+
+  removeFromQueue(participantId);
+
+  if (p.channel && rooms.has(p.channel)) {
+    await finalizeRoom(p.channel, {
+      overReason: "player_left",
+      leftBy: participantId,
+      leftReason: reason,
+    });
   }
 
-  // 既にチャンネル割当済みなら紐付けも削除（保険）
-  const ch = userToChannel.get(userId);
-  if (ch) {
-    userToChannel.delete(userId);
-    const room = rooms.get(ch);
-    if (room) {
-      room.users = room.users.filter(u => u !== userId);
-      if (room.users.length === 0) rooms.delete(ch);
-      else rooms.set(ch, room);
-    }
-  }
+  p.finalLeft = true;
+  p.channel = null;
+  p.disconnectedAt = nowMs();
 
   return res.json({ ok: true });
 });
@@ -617,6 +921,35 @@ app.post("/game/leave", (req, res) => {
   g.leftReason = reason || "user_exit";
 
   return res.json({ ok: true });
+});
+
+app.post("/rematch", async (req, res) => {
+  const participantId = String(req.body?.participantId || "");
+  const resumeToken = String(req.body?.resumeToken || "");
+  const p = findAuthedParticipant(participantId, resumeToken);
+  if (!p) return res.status(401).json({ error: "unauthorized" });
+  if (!p.channel || !rooms.has(p.channel)) {
+    return res.status(400).json({ error: "no_active_room" });
+  }
+
+  const oppId = getOpponentId(p.channel, p.participantId);
+  const opp = oppId ? participants.get(oppId) : null;
+  refreshConnectivity(opp);
+
+  const eligible = !!opp && !!opp.disconnectedAt && (nowMs() - opp.disconnectedAt >= REMATCH_GRACE_MS);
+  if (!eligible) {
+    return res.status(403).json({ error: "rematch_not_allowed" });
+  }
+
+  const oldChannel = p.channel;
+  await finalizeRoom(oldChannel, {
+    overReason: "opponent_disconnected",
+    leftBy: oppId,
+    leftReason: "connection_lost",
+  });
+
+  touchParticipant(p);
+  return res.json(enqueueOrPair(p));
 });
 
 app.post("/agora/ncs", express.json({ type: "*/*" }), (req, res) => {

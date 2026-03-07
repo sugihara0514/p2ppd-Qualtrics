@@ -1,5 +1,7 @@
 // game.js
-export function startGame(channel, rtc) {
+import { API_BASE, MATCH_CTX_KEY } from "./api.js";
+
+export function startGame(channel, rtc, opts = {}) {
 
   const ui = document.querySelector(".container");
 
@@ -103,6 +105,58 @@ export function startGame(channel, rtc) {
   const status = document.getElementById("dynamicText");
   // 次へボタン
   const nextButton = document.getElementById("next_button");
+
+  function safeParseJSON(text) {
+    try {
+      return text ? JSON.parse(text) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getMatchCtx() {
+    if (window.__PD_MATCH_CTX__ && typeof window.__PD_MATCH_CTX__ === "object") {
+      return window.__PD_MATCH_CTX__;
+    }
+    let stored = null;
+    try {
+      stored = safeParseJSON(sessionStorage.getItem(MATCH_CTX_KEY));
+    } catch (e) {
+      console.warn("sessionStorage read failed", e);
+    }
+    if (stored && typeof stored === "object") {
+      window.__PD_MATCH_CTX__ = stored;
+      return stored;
+    }
+    return {};
+  } 
+
+  function setMatchCtx(patch = {}) {
+    const nextCtx = { ...getMatchCtx(), ...patch };
+    window.__PD_MATCH_CTX__ = nextCtx;
+    try {
+      sessionStorage.setItem(MATCH_CTX_KEY, JSON.stringify(nextCtx));
+    } catch (e) {
+      console.warn("setMatchCtx failed", e);
+    }
+    return nextCtx;
+  }
+
+  const rematchButton = document.getElementById("rematch_button");
+
+  function showRematchButton() {
+    if (!rematchButton) return;
+    rematchButton.style.display = "inline-block";
+    rematchButton.disabled = false;
+  }
+
+  function hideRematchButton() {
+    if (!rematchButton) return;
+    rematchButton.style.display = "none";
+    rematchButton.disabled = true;
+  }
+
+  hideRematchButton();
 
   // 選択関連 DOM
   const green_button = document.getElementById("green_button");
@@ -421,16 +475,25 @@ export function startGame(channel, rtc) {
   // mental_sliders は「常に表示してグレーアウト」で運用
   setGray(emoUI, true);
 
-  const API_BASE = "https://multimodalpd-9qz7.onrender.com"; // APIのURL
-  // playerId：QualtricsのResponseIDを優先し、なければlocalStorageのUUID
+  // playerId は match.js と同じ participantId を使う
   let pid =
-    (window.__PD__ && window.__PD__.responseId) ||
+    opts.participantId ||
+    (window.__PD_MATCH_CTX__ && window.__PD_MATCH_CTX__.participantId) ||
+    (window.__PD__ && (window.__PD__.participantId || window.__PD__.responseId)) ||
     localStorage.getItem("pd_player_id");
 
   if (!pid) {
     pid = crypto.randomUUID();
     localStorage.setItem("pd_player_id", pid);
   }
+
+  pid = String(pid);
+  const participantId = pid;
+
+  let currentResumeToken =
+    opts.resumeToken ||
+    getMatchCtx().resumeToken ||
+    "";
 
   let oppId = null; // 相手のID
 
@@ -466,6 +529,52 @@ export function startGame(channel, rtc) {
   if (window.Qualtrics && Qualtrics.SurveyEngine) {
     qSet("pd_player_id", String(pid));
   }
+
+  setMatchCtx({
+    participantId,
+    channel,
+    ...(currentResumeToken ? { resumeToken: currentResumeToken } : {}),
+  });
+
+  rematchButton?.addEventListener("click", async () => {
+    if (!currentResumeToken) {
+      setStatus("再マッチ情報が見つかりません。ページを再読み込みしてください。", {
+        typewriter: false,
+        force: true,
+      });
+      return;
+    }
+
+    rematchButton.disabled = true;
+    setStatus("再マッチを開始しています…", { typewriter: false, force: true });
+
+    try {
+      const r = await fetch(`${API_BASE}/rematch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ participantId, resumeToken: currentResumeToken }),
+      });
+
+      const data = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
+
+      currentResumeToken = data?.resumeToken || currentResumeToken;
+      setMatchCtx({
+        participantId,
+        resumeToken: currentResumeToken,
+        channel: data?.channel || channel,
+      });
+
+      window.location.reload();
+    } catch (e) {
+      console.error("rematch failed", e);
+      setStatus("再マッチに失敗しました。少し待ってからもう一度お試しください。", {
+        typewriter: false,
+        force: true,
+      });
+      rematchButton.disabled = false;
+    }
+  });  
 
   // 録画ファイル名にも使われるroom名（channel）を保存
   qSet("pd_room", String(channel));
@@ -510,18 +619,15 @@ export function startGame(channel, rtc) {
     currentRound = init.round || 1;
     renderRound();
 
-    // 最初は「相手の選択予測」フェーズ
     setButtonsEnabled(false);
     canChoose = false;
 
-    // 予測に入る前に 0回目感情
-    showBaselineEmotionUI()
+    if (!init.baselineDone) {
+      showBaselineEmotionUI();
+      return;
+    }
 
-    // // 予測スライダーを表示
-    // showPredictionUI();
-
-    // // サーバ状態のポーリング開始
-    // startPolling();
+    startPolling();    
   }).catch(err => {
     console.error("game/join failed", err);
     setStatus("ゲーム初期化に失敗しました", { typewriter:false, force:true });
@@ -663,6 +769,17 @@ export function startGame(channel, rtc) {
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch {}
 
+    if (resp.status === 409) {
+      console.warn("choice conflict", data || text);
+      currentRound = data?.serverRound || currentRound;
+      renderRound();
+      hasChosenThisRound = false;
+      pendingChoice = null;
+      setStatus("画面を最新状態に同期しました。しばらくお待ちください。", { typewriter:false, force:true });
+      updateNextEnabled();
+      return;
+    }
+
     if (!resp.ok) {
       console.error("choice HTTP error", resp.status, data || text);
       setStatus(`送信エラー(${resp.status}). ページ再読み込みしてください。`, { typewriter:false, force:true });
@@ -673,9 +790,7 @@ export function startGame(channel, rtc) {
     updateNextEnabled();
   }
 
-  function startPolling() {
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(async () => {
+ async function pollOnce() {
       try {
         const r = await fetch(`${API_BASE}/game/state?channel=${encodeURIComponent(channel)}&playerId=${encodeURIComponent(pid)}`);
         const s = await r.json();
@@ -684,6 +799,7 @@ export function startGame(channel, rtc) {
         // 終了
         if (s.over) {
           clearInterval(pollTimer);
+          hideRematchButton();
           // 最終ラウンドの結果が入っていればそれを採用
           const finalTotal =
             s.lastResult?.totals?.[pid] ??
@@ -716,12 +832,32 @@ export function startGame(channel, rtc) {
             console.warn("leave on game over failed", e);
           }
 
-          // qSet("pd_prediction_json", predictionHistory);
-          // qSet("pd_emotion_json", emotionHistory);
-          // qSet("pd_history_json", history);
-
           return;
         }
+
+        // 相手の通信断。一定時間までは待機、一定時間を超えたら再マッチだけ許可。
+        if (s.opponentConnected === false) {
+          canChoose = false;
+          waitingEmotion = false;
+          waitingPrediction = false;
+          setChoiceButtonsEnabled(false);
+
+          if (choiceUI) fadeOutDisable(choiceUI);
+          setGray(emoUI, true);
+          hideBase(nextButton);
+
+          if (s.rematchEligible) {
+            showRematchButton();
+            setStatus("相手の再接続が一定時間確認できなかったため、再マッチできます。", { typewriter:false, force:true });
+          } else {
+            hideRematchButton();
+            setStatus("相手との接続が切れています。再接続を待っています…", { typewriter:false, force:true });
+          }
+          return;
+        }
+
+        hideRematchButton();
+
         const serverStage = s.stage || "choice";
         const serverRound = s.round || currentRound;
 
@@ -763,72 +899,21 @@ export function startGame(channel, rtc) {
           return;
         }
 
-        // 1) 予測フェーズ（現在廃止）
-        // if (serverStage === "predict") {
-        //   setLayout("emopred");
-        //   canChoose = false;
-        //   setButtonsEnabled(false);
-
-        //   // 既に送っているなら待機表示だけ
-        //   if (predictionDoneRound === currentRound) {
-        //     setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の予測が終わるのを待っています…`, {
-        //       typewriter:false
-        //     });
-        //     return;
-        //   }
-
-        //   // キューがあれば自動送信（UIは出さない）
-        //   if (queuedPrediction && queuedPrediction.round === currentRound) {            
-        //     const v = queuedPrediction.value;
-
-        //     try {
-        //       const resp = await fetch(`${API_BASE}/game/predict`, {
-        //         method: "POST",
-        //         headers: { "Content-Type":"application/json" },
-        //         body: JSON.stringify({ channel, playerId: pid, round: currentRound, prediction: v }),
-        //       });
-
-        //       if (!resp.ok) {
-        //         const t = await resp.text();
-        //         console.error("game/predict HTTP error", resp.status, t);
-        //         // 失敗したらキューを残して次回pollで再送
-        //         setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 予測送信に失敗。再送します…`, { typewriter:false, force:true });
-        //         return;
-        //       }
-
-        //       // 成功したら初めて確定
-        //       predictionHistory.push({ round: currentRound, value: v });
-        //       qSetRound(currentRound, { prediction: v });
-        //       predictionDoneRound = currentRound;
-        //       queuedPrediction = null;
-
-        //       // 待機表示
-        //       if (predUI) fadeOutDisable(predUI);
-        //       hideBase(nextButton);
-        //       setGray(emoUI, true);
-
-        //       setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の予測が終わるのを待っています…`, { typewriter:false, force:true });
-        //       updateNextEnabled();
-        //       return;
-        //     } catch (e) {
-        //       console.error("game/predict failed", e);
-        //       setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 予測送信に失敗。再送します…`, { typewriter:false, force:true });
-        //       return;
-        //     }
-        //   }
-
-          
-        //   setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 予測データが見つかりません（直前の感情+予測が未確定の可能性）。`, {
-        //     typewriter:false,
-        //     force:true
-        //   });
-        //   return;
-        // }
-
         // 2) 選択フェーズ：C/D ボタンを有効化
         if (serverStage === "choice") {
           setLayout("choice");
 
+          if (s.myChoiceSubmitted) {
+            canChoose = false;
+            setChoiceButtonsEnabled(false);
+            fadeInEnable(choiceUI);
+            hideBase(nextButton);
+            setStatus(`Round ${currentRound}/${MAX_ROUNDS}: あなたの選択は送信済みです。相手の結果を待っています…`, {
+              typewriter:false,
+              force:true,
+            });
+            return;
+          }
 
           if (!hasChosenThisRound && !canChoose) {
             // choiceフェーズ開始（Unix ms）
@@ -859,6 +944,21 @@ export function startGame(channel, rtc) {
 
         // 3) emotion（サーバの stage を尊重してここでだけ lastResult/感情入力）
         if (serverStage === "emotion") {
+          if (s.myEmotionSubmitted) {
+            setLayout("emopred");
+            waitingEmotion = false;
+            waitingPrediction = false;
+            canChoose = false;
+            if (choiceUI) fadeOutDisable(choiceUI);
+            setGray(emoUI, true);
+            hideBase(nextButton);
+            setStatus(`Round ${(s.lastResult?.round ?? currentRound)}/${MAX_ROUNDS}: 感情は送信済みです。相手の入力を待っています…`, {
+              typewriter:false,
+              force:true,
+            });
+            return;
+          }          
+
           if (s.lastResult && lastResultRoundHandled !== s.lastResult.round) {
 
             const resultRound = s.lastResult.round;
@@ -963,7 +1063,12 @@ export function startGame(channel, rtc) {
       } catch (e) {
         console.error("poll/state failed", e);
       }
-    }, 800); // 800ms間隔ポーリング
+  }
+
+  function startPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollOnce();
+    pollTimer = setInterval(pollOnce, 800);
   }
 
   function stopPolling() {
@@ -1113,11 +1218,19 @@ export function startGame(channel, rtc) {
 
     // サーバ送信（既存の /game/emotion をそのまま）
     try {
-      await fetch(`${API_BASE}/game/emotion`, {
+      const resp = await fetch(`${API_BASE}/game/emotion`, {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ channel, playerId: pid, round: currentRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7, emo8:v8, emo9:v9, emo10:v10 }),
+        body: JSON.stringify({ channel, playerId: pid, round: baseRound, emo1:v1, emo2:v2, emo3:v3, emo4:v4, emo5:v5, emo6:v6, emo7:v7, emo8:v8, emo9:v9, emo10:v10 }),
       });
+
+      if (resp.status === 409) {
+        const data = await resp.json().catch(() => null);
+        currentRound = data?.serverRound || currentRound;
+        renderRound();
+        setStatus("画面を最新状態に同期しました。しばらくお待ちください。", { typewriter:false, force:true });
+        return;
+      }
     } catch (e) {
       console.error("game/emotion failed", e);
     }
