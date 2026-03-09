@@ -1,7 +1,7 @@
 // api.js
 // renderのリンク
 export const API_BASE = "https://multimodalpd-9qz7.onrender.com";
-export const MATCH_CTX_KEY = "pd_match_ctx_v2";
+export const MATCH_CTX_KEY = "pd_match_ctx_v1";
 
 export function readMatchCtx() {
   try {

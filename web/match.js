@@ -16,7 +16,6 @@ import {
 import { createRtc } from "./rtc.js";
 import { startGame } from "./game.js";
 
-const API_BASE = "https://multimodalpd-9qz7.onrender.com";
 
 let matching = false;       // 二重起動防止
 let matchTimer = null;      // setInterval のハンドル
@@ -208,7 +207,7 @@ export async function enterFlow(APP_ID, useToken = true) {
     } catch (e) {
       console.warn("[MATCH] rtc.leave error", e);
     }
-    
+
     clearMatchCtx();
     window.__PD_MATCH_CTX__ = null;
   };
