@@ -95,11 +95,37 @@ const recordings = new Map(); // channel -> { resourceId, sid, uid }
 // 録画用 UID（通常の参加者と被らない値）
 const RECORD_UID = Number(process.env.AGORA_RECORD_UID || 9999);
 
+const phaseEvents = new Map(); // channel -> [{ atMs, round, phase, participantId, seat }]
+
+function logPhaseEvent(channel, event) {
+  if (!phaseEvents.has(channel)) phaseEvents.set(channel, []);
+  phaseEvents.get(channel).push({
+    atMs: nowMs(),
+    ...event,
+  });
+}
+
 // Cloud Recording 開始ヘルパー
 async function startCloudRecording(channel) {
   try {
     if (recordings.has(channel)) {
       return recordings.get(channel);
+    }
+
+    const room = rooms.get(channel);
+    if (!room?.seats) {
+      console.warn("[recording] seats not ready", channel);
+      return null;
+    }
+
+    const leftPid = room.seats.left;
+    const rightPid = room.seats.right;
+    const leftUid = room.uidMap?.[leftPid];
+    const rightUid = room.uidMap?.[rightPid];
+
+    if (!leftUid || !rightUid) {
+      console.warn("[recording] uidMap not ready", { channel, leftPid, rightPid, uidMap: room.uidMap });
+      return null;
     }
 
     // 1) acquire
@@ -167,7 +193,7 @@ async function startCloudRecording(channel) {
       layoutConfig: [
         {
           // 左の人
-          // uidを省略すると「映像を送ってきた順」に割当てられる
+          uid: String(leftUid),
           x_axis: 0.0,
           y_axis: 0.0,
           width: 0.5,    // 画面左半分
@@ -178,6 +204,7 @@ async function startCloudRecording(channel) {
         },
         {
           // 右の人
+          uid: String(rightUid),
           x_axis: 0.5,
           y_axis: 0.0,
           width: 0.5,    // 画面右半分
@@ -198,7 +225,6 @@ async function startCloudRecording(channel) {
 };
 
 if (recToken) clientRequest.token = recToken;
-
 
     const startResp = await fetch(
       `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/mode/mix/start`,
@@ -222,9 +248,26 @@ if (recToken) clientRequest.token = recToken;
     }
 
     const { sid } = startData;
-    const info = { resourceId, sid, uid: RECORD_UID };
+    const info = {
+      resourceId,
+      sid,
+      uid: RECORD_UID,
+      startedAtMs: nowMs(),
+      leftPid,
+      rightPid,
+      leftUid,
+      rightUid,
+    };
     recordings.set(channel, info);
     console.log("[recording] started", channel, info);
+
+    logPhaseEvent(channel, {
+      round: 0,
+      phase: "recording_started",
+      participantId: null,
+      seat: null,
+    });
+
     return info;
   } catch (err) {
     console.error("[recording] start error", err);
@@ -349,6 +392,14 @@ function getOpponentId(channel, participantId) {
   return room.users.find((id) => id !== participantId) || null;
 }
 
+function getSeatForParticipant(channel, participantId) {
+  const room = rooms.get(channel);
+  if (!room?.seats) return null;
+  if (room.seats.left === participantId) return "left";
+  if (room.seats.right === participantId) return "right";
+  return null;
+}
+
 function buildMatchResponse(p) {
   if (p.channel && rooms.has(p.channel)) {
     return {
@@ -380,6 +431,10 @@ function pairParticipants(a, b) {
   rooms.set(channel, {
     channel,
     users: [a.participantId, b.participantId],
+    seats: {
+      left: a.participantId,
+      right: b.participantId,
+    },
     createdAt: nowMs(),
   });
   a.channel = channel;
@@ -551,6 +606,42 @@ app.get("/rtc/token", (req, res) => {
   res.json({ appId: APP_ID, channel, uid, token, expire });
 });
 
+app.post("/rtc/register", async (req, res) => {
+  const { channel, participantId, resumeToken, uid } = req.body || {};
+  if (!channel || !participantId || !resumeToken || uid == null) {
+    return res.status(400).json({ error: "channel, participantId, resumeToken, uid required" });
+  }
+
+  const p = findAuthedParticipant(participantId, resumeToken);
+  if (!p || p.channel !== channel) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+
+  const room = rooms.get(channel);
+  if (!room) {
+    return res.status(404).json({ error: "room_not_found" });
+  }
+
+  if (!room.uidMap) room.uidMap = {};
+  room.uidMap[String(participantId)] = Number(uid);
+
+  const leftPid = room.seats?.left;
+  const rightPid = room.seats?.right;
+  const leftUid = leftPid ? room.uidMap[leftPid] : null;
+  const rightUid = rightPid ? room.uidMap[rightPid] : null;
+
+  if (leftUid && rightUid && !recordings.has(channel)) {
+    await startCloudRecording(channel);
+  }
+
+  return res.json({
+    ok: true,
+    seat: getSeatForParticipant(channel, String(participantId)),
+    seats: room.seats || null,
+    uidMap: room.uidMap,
+  });
+});
+
 app.get("/", (req, res) => res.send("pd-api ok"));
 app.get("/healthz", (req, res) => res.json({ ok: true }));
 
@@ -577,6 +668,9 @@ function buildGameSnapshot(channel, playerId) {
   const opponentConnected = !!oppId && isConnected(opp);
   const rematchEligible = !!oppId && !!opp?.disconnectedAt && (nowMs() - opp.disconnectedAt >= REMATCH_GRACE_MS);
 
+  const seat = getSeatForParticipant(channel, meId);
+  const seats = room?.seats || null;
+
   return {
     exists: true,
     round: g.round,
@@ -593,6 +687,8 @@ function buildGameSnapshot(channel, playerId) {
     opponentConnected,
     rematchEligible,
     opponentId: oppId,
+    seat,
+    seats,
   };
 }
 
@@ -643,6 +739,20 @@ app.post("/record/stop", async (req, res) => {
   }
   await stopCloudRecording(channel);  // 既に録画終了済みなら何もしない実装にしておく
   return res.json({ ok: true });
+});
+
+app.get("/record/meta", (req, res) => {
+  const channel = String(req.query.channel || "");
+  const room = rooms.get(channel);
+  const rec = recordings.get(channel);
+
+  return res.json({
+    channel,
+    seats: room?.seats || null,
+    uidMap: room?.uidMap || null,
+    recording: rec || null,
+    phaseEvents: phaseEvents.get(channel) || [],
+  });
 });
 
 // 相手の選択予測をサーバに送信
@@ -726,6 +836,13 @@ app.post("/game/choice", async (req, res) => {
   g.choices.set(String(playerId), choice);
   g.choiceLedger.set(roundKey, choice);
 
+  logPhaseEvent(channel, {
+    round: rNow,
+    phase: "choice_submitted",
+    participantId: String(playerId),
+    seat: getSeatForParticipant(channel, String(playerId)),
+  });
+
   // 2人そろったら判定
   if (g.choices.size >= 2 && g.players.size >= 2) {
     const [p1, p2] = Array.from(g.players);
@@ -747,6 +864,13 @@ app.post("/game/choice", async (req, res) => {
 
     // 感情スライダーバーに移行
     g.stage = "emotion";
+
+    logPhaseEvent(channel, {
+      round: rNow,
+      phase: "emotion_started",
+      participantId: null,
+      seat: null,
+    });
   }
 
   return res.json({ ok: true, serverRound: g.round, stage: g.stage });
@@ -821,6 +945,13 @@ app.post("/game/emotion", (req, res) => {
     emo10: Number(emo10),
   });
 
+  logPhaseEvent(channel, {
+    round: rNow,
+    phase: "emotion_submitted",
+    participantId: String(playerId),
+    seat: getSeatForParticipant(channel, String(playerId)),
+  });
+
   // 2人分そろったら次ラウンドへ
   if (g.players.size >= 2 && g.emotions.size >= 2) {
     g.emotions.clear();
@@ -830,9 +961,21 @@ app.post("/game/emotion", (req, res) => {
     if (rNow >= MAX_ROUNDS) {
       g.over = true;
       g.stage = "done";
+      logPhaseEvent(channel, {
+        round: rNow,
+        phase: "game_finished",
+        participantId: null,
+        seat: null,
+      });
     } else {
       g.round = rNow + 1;
-      g.stage = "choice";  // 次ラウンドは直接選択へ
+      g.stage = "choice";
+      logPhaseEvent(channel, {
+        round: g.round,
+        phase: "next_round_started",
+        participantId: null,
+        seat: null,
+      });
     }
   }
 
@@ -857,6 +1000,13 @@ app.post("/game/ready", (req, res) => {
   g.players.add(String(playerId));
   if (!g.ready) g.ready = new Set();
   g.ready.add(String(playerId));
+
+  logPhaseEvent(channel, {
+    round: 0,
+    phase: "baseline_done",
+    participantId: String(playerId),
+    seat: getSeatForParticipant(channel, String(playerId)),
+  });
 
   // 2人揃うまでは waiting
   if (g.players.size >= 2 && g.ready.size >= 2) {

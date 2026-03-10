@@ -619,6 +619,10 @@ export function startGame(channel, rtc, opts = {}) {
     currentRound = init.round || 1;
     renderRound();
 
+    if (init.seat) qSet("pd_video_side", String(init.seat));
+    if (init.seats?.left) qSet("pd_room_left_pid", String(init.seats.left));
+    if (init.seats?.right) qSet("pd_room_right_pid", String(init.seats.right));
+
     setButtonsEnabled(false);
     canChoose = false;
 
@@ -795,6 +799,10 @@ export function startGame(channel, rtc, opts = {}) {
         const r = await fetch(`${API_BASE}/game/state?channel=${encodeURIComponent(channel)}&playerId=${encodeURIComponent(pid)}`);
         const s = await r.json();
         if (!s.exists) return;
+
+        if (s.seat) qSet("pd_video_side", String(s.seat));
+        if (s.seats?.left) qSet("pd_room_left_pid", String(s.seats.left));
+        if (s.seats?.right) qSet("pd_room_right_pid", String(s.seats.right));
 
         // 終了
         if (s.over) {

@@ -168,6 +168,22 @@ export async function enterFlow(APP_ID, useToken = true) {
   await rtc.join(channel, token, uid);
   console.log("[RTC] joined", { channel, uid });
 
+  const regRtcResp = await fetch(`${API_BASE}/rtc/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      channel,
+      participantId: ctx.participantId,
+      resumeToken: ctx.resumeToken,
+      uid,
+    }),
+  });
+
+  const regRtc = await regRtcResp.json().catch(() => null);
+  if (!regRtcResp.ok) {
+    throw new Error(regRtc?.error || "rtc_register_failed");
+  }
+
   ctx = writeMatchCtx({ ...ctx, channel });
   window.__PD_MATCH_CTX__ = { ...ctx, uid };
   startHeartbeat(ctx);
@@ -181,6 +197,7 @@ export async function enterFlow(APP_ID, useToken = true) {
   startGame(channel, rtc, {
     participantId: ctx.participantId,
     resumeToken: ctx.resumeToken,
+    uid,
   });
   matching = false;
 
