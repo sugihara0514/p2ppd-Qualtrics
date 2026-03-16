@@ -182,7 +182,7 @@ export function startGame(channel, rtc, opts = {}) {
 
 
   // ラウンド数
-  const MAX_ROUNDS = 20; // 本番は20
+  const MAX_ROUNDS = 5; // 本番は20
   const round_N = document.getElementById("round_N");
 
   function renderRound() {
@@ -914,7 +914,10 @@ export function startGame(channel, rtc, opts = {}) {
           if (s.myChoiceSubmitted) {
             canChoose = false;
             setChoiceButtonsEnabled(false);
-            fadeInEnable(choiceUI);
+
+            // 送信後は選択UIを消す
+            if (choiceUI) fadeOutDisable(choiceUI);
+
             hideBase(nextButton);
             setStatus(`Round ${currentRound}/${MAX_ROUNDS}: あなたの選択は送信済みです。相手の結果を待っています…`, {
               typewriter:false,
