@@ -648,6 +648,7 @@ export function startGame(channel, rtc, opts = {}) {
 
     setButtonsEnabled(false);
     canChoose = false;
+    syncNextButtonVisualState();
 
     if (!init.baselineDone) {
       showBaselineEmotionUI();
@@ -1153,6 +1154,11 @@ export function startGame(channel, rtc, opts = {}) {
     updateNextEnabled();
   }
 
+  function syncNextButtonVisualState() {
+    if (!nextButton) return;
+    nextButton.classList.toggle("soft_disabled", !!nextButton.disabled);
+  }
+
   function setChoiceWaitingUI(on) {
     if (!choiceUI) return;
     choiceUI.classList.toggle("grayout", !!on);
@@ -1163,24 +1169,27 @@ export function startGame(channel, rtc, opts = {}) {
   }
 
   function updateNextEnabled() {
-    // choice中は「仮決定がある時だけ next 有効」
     if (!nextButton) return;
 
     if (canChoose) {
       nextButton.disabled = !pendingChoice;
+      syncNextButtonVisualState();
       return;
     }
-    // predict/emotion中は next 有効、待機中は無効、など運用に合わせて
+
     if (waitingEmotion) {
       nextButton.disabled = !areAllEmotionSlidersTouched();
+      syncNextButtonVisualState();
       return;
     }
 
     if (waitingPrediction) {
       nextButton.disabled = false;
+      syncNextButtonVisualState();
       return;
     }
-    nextButton.disabled = true; // それ以外（相手待ちなど）
+    nextButton.disabled = true;
+    syncNextButtonVisualState();
   }
 
   function showPredictionUI() {
