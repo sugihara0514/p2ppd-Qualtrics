@@ -185,23 +185,28 @@ export function startGame(channel, rtc, opts = {}) {
   const emoSliders = [emo1, emo2, emo3, emo4, emo5, emo6, emo7, emo8, emo9, emo10].filter(Boolean);
   let touchedEmotionSliders = new Set();
 
-  emoSliders.forEach((slider, idx) => {
-    slider.addEventListener("input", () => markEmotionTouched(idx));
-    slider.addEventListener("change", () => markEmotionTouched(idx));
-  });
-
   function resetEmotionTouched() {
     touchedEmotionSliders = new Set();
+    emoSliders.forEach((slider) => {
+      slider.closest(".mental_row")?.classList.add("is-untouched");
+    });
+    updateNextEnabled();
   }
 
-  function markEmotionTouched(index) {
+  function markEmotionTouched(index, slider) {
     touchedEmotionSliders.add(index);
+    slider.closest(".mental_row")?.classList.remove("is-untouched");
     updateNextEnabled();
   }
 
   function areAllEmotionSlidersTouched() {
     return touchedEmotionSliders.size === emoSliders.length;
   }
+
+  emoSliders.forEach((slider, idx) => {
+    slider.addEventListener("input", () => markEmotionTouched(idx, slider));
+    slider.addEventListener("change", () => markEmotionTouched(idx, slider));
+  });
 
   // ラウンド数
   const MAX_ROUNDS = 5; // 本番は20
@@ -1188,6 +1193,7 @@ export function startGame(channel, rtc, opts = {}) {
       syncNextButtonVisualState();
       return;
     }
+    
     nextButton.disabled = true;
     syncNextButtonVisualState();
   }
