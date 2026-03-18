@@ -195,7 +195,7 @@ export function startGame(channel, rtc, opts = {}) {
 
   function markEmotionTouched(index, slider) {
     touchedEmotionSliders.add(index);
-    slider.closest(".mental_row")?.classList.remove("is-untouched");
+    slider.classList.remove("is-untouched");
     updateNextEnabled();
   }
 
@@ -1151,6 +1151,7 @@ export function startGame(channel, rtc, opts = {}) {
     if (green_button) green_button.disabled = !on;
     if (blue_button) blue_button.disabled = !on;
     if (nextButton) nextButton.disabled = !on;
+    syncNextButtonVisualState();
   }
 
   function setChoiceButtonsEnabled(on) {
