@@ -188,7 +188,7 @@ export function startGame(channel, rtc, opts = {}) {
   function resetEmotionTouched() {
     touchedEmotionSliders = new Set();
     emoSliders.forEach((slider) => {
-      slider.closest(".mental_row")?.classList.add("is-untouched");
+      slider.classList.add("is-untouched");
     });
     updateNextEnabled();
   }
@@ -870,14 +870,15 @@ export function startGame(channel, rtc, opts = {}) {
           window.__PD_GAME_OVER__ = true;
 
           // ゲーム終了時に録画停止 + チャンネル離脱（match.jsの__PD_LEAVE__を呼ぶ）
-          try {
-            if (!window.__PD_LEAVE_CALLED__ && typeof window.__PD_LEAVE__ === "function") {
-              window.__PD_LEAVE_CALLED__ = true; // 二重呼び出し防止
-              window.__PD_LEAVE__();             // match.js内で rtc.leave → record/stop の順に実行される
-            }
-          } catch (e) {
-            console.warn("leave on game over failed", e);
-          }
+          // try {
+          //   if (!window.__PD_LEAVE_CALLED__ && typeof window.__PD_LEAVE__ === "function") {
+          //     window.__PD_LEAVE_CALLED__ = true; // 二重呼び出し防止
+          //     window.__PD_LEAVE__();             // match.js内で rtc.leave → record/stop の順に実行される
+          //   }
+          // } catch (e) {
+          //   console.warn("leave on game over failed", e);
+          // }
+          console.log("[game over] skip immediate leave for debugging");
 
           return;
         }
