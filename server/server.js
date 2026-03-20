@@ -435,6 +435,7 @@ function pairParticipants(a, b) {
       left: a.participantId,
       right: b.participantId,
     },
+    uidMap: {},
     createdAt: nowMs(),
   });
   a.channel = channel;
@@ -670,6 +671,8 @@ function buildGameSnapshot(channel, playerId) {
 
   const seat = getSeatForParticipant(channel, meId);
   const seats = room?.seats || null;
+  const leftTotal = seats?.left ? (g.totals.get(seats.left) || 0) : 0;
+  const rightTotal = seats?.right ? (g.totals.get(seats.right) || 0) : 0;
 
   return {
     exists: true,
@@ -689,6 +692,8 @@ function buildGameSnapshot(channel, playerId) {
     opponentId: oppId,
     seat,
     seats,
+    leftTotal,
+    rightTotal,
   };
 }
 
@@ -860,6 +865,24 @@ app.post("/game/choice", async (req, res) => {
       payoffs: { [p1]: pay1, [p2]: pay2 },
       totals: Object.fromEntries(g.totals.entries())
     };
+
+    const room = rooms.get(channel);
+    const leftPid = room?.seats?.left || null;
+    const rightPid = room?.seats?.right || null;
+
+    logPhaseEvent(channel, {
+      round: rNow,
+      phase: "result",
+      leftPid,
+      rightPid,
+      leftChoice: leftPid ? (g.lastResult.choices[leftPid] || "") : "",
+      rightChoice: rightPid ? (g.lastResult.choices[rightPid] || "") : "",
+      leftPayoff: leftPid ? (g.lastResult.payoffs[leftPid] || 0) : 0,
+      rightPayoff: rightPid ? (g.lastResult.payoffs[rightPid] || 0) : 0,
+      leftTotal: leftPid ? (g.lastResult.totals[leftPid] || 0) : 0,
+      rightTotal: rightPid ? (g.lastResult.totals[rightPid] || 0) : 0,
+    });
+
     g.choices.clear();
 
     // 感情スライダーバーに移行
@@ -870,6 +893,12 @@ app.post("/game/choice", async (req, res) => {
       phase: "emotion_started",
       participantId: null,
       seat: null,
+      leftPid,
+      rightPid,
+      leftChoice: leftPid ? (g.lastResult?.choices?.[leftPid] || "") : "",
+      rightChoice: rightPid ? (g.lastResult?.choices?.[rightPid] || "") : "",
+      leftTotal: leftPid ? (g.lastResult?.totals?.[leftPid] || 0) : 0,
+      rightTotal: rightPid ? (g.lastResult?.totals?.[rightPid] || 0) : 0,
     });
   }
 
@@ -961,20 +990,34 @@ app.post("/game/emotion", (req, res) => {
     if (rNow >= MAX_ROUNDS) {
       g.over = true;
       g.stage = "done";
+      const room = rooms.get(channel);
+      const leftPid = room?.seats?.left || null;
+      const rightPid = room?.seats?.right || null;
       logPhaseEvent(channel, {
         round: rNow,
         phase: "game_finished",
         participantId: null,
         seat: null,
+        leftPid,
+        rightPid,
+        leftTotal: leftPid ? (g.totals.get(leftPid) || 0) : 0,
+        rightTotal: rightPid ? (g.totals.get(rightPid) || 0) : 0,
       });
     } else {
       g.round = rNow + 1;
       g.stage = "choice";
+      const room = rooms.get(channel);
+      const leftPid = room?.seats?.left || null;
+      const rightPid = room?.seats?.right || null;
       logPhaseEvent(channel, {
         round: g.round,
         phase: "next_round_started",
         participantId: null,
         seat: null,
+        leftPid,
+        rightPid,
+        leftTotal: leftPid ? (g.totals.get(leftPid) || 0) : 0,
+        rightTotal: rightPid ? (g.totals.get(rightPid) || 0) : 0,
       });
     }
   }

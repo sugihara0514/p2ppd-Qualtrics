@@ -1075,6 +1075,7 @@ export function startGame(channel, rtc, opts = {}) {
               oppChoice,
               youPayoff,
               youTotal,
+              oppTotal,
             });
 
             // このラウンドの感情入力を開始
