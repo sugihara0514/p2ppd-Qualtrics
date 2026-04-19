@@ -209,12 +209,25 @@ export function startGame(channel, rtc, opts = {}) {
   });
 
   // ラウンド数
-  const MAX_ROUNDS = 3; // 本番は20
+  const MAX_ROUNDS = 5;
   const round_N = document.getElementById("round_N");
 
   function renderRound() {
     if (!round_N) return;
     round_N.textContent = String(currentRound);
+  }
+
+  // 追加コメント
+  const ROUND_CHOICE_COMMENTS = {
+    1: "今回どうするか、一言相談してみてください",
+    2: "相手がどう考えているか聞いてみてください",
+    3: "なぜそうしたいか伝えてみてください",
+    4: "今回の進め方を短く相談してみてください",
+    5: "最後のラウンドをどうするか話してみてください",
+  };
+
+  function getRoundChoiceComment(round) {
+    return ROUND_CHOICE_COMMENTS[round] || "";
   }
 
   // 合計得点表示
@@ -976,10 +989,16 @@ export function startGame(channel, rtc, opts = {}) {
             // choiceフェーズ開始（Unix ms）
             qSetRound(currentRound, { choiceStartAt: Date.now() });
 
-            setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑か青を選び、次へで確定してください`, {
-              typewriter: true,
-              force: true
-            });
+            const roundComment = getRoundChoiceComment(currentRound);
+
+            setStatus(
+              `Round ${currentRound}/${MAX_ROUNDS}: 緑か青を選び、次へで確定してください。` +
+              (roundComment ? `\n${roundComment}` : ""),
+              {
+                typewriter: true,
+                force: true
+              }
+            );
             
             // choice表示
             if (predUI) fadeOutDisable(predUI);
