@@ -505,6 +505,12 @@ async function finalizeRoom(channel, { overReason = "player_left", leftBy = null
 
   rooms.delete(channel);
   await stopCloudRecording(channel);
+
+  // 再戦用に閉じた旧ゲームは消す
+  if (overReason === "opponent_disconnected") {
+    games.delete(channel);
+    phaseEvents.delete(channel);
+  }
 }
 
 app.post("/join", (req, res) => {
@@ -656,12 +662,13 @@ const games = new Map();
 
 function buildGameSnapshot(channel, playerId) {
   const g = games.get(channel);
+  const room = rooms.get(channel);
+
   if (!g) return { exists: false };
 
   const meId = String(playerId || "");
   const myTotal = g.totals.get(meId) || 0;
 
-  const room = rooms.get(channel);
   const oppId = room?.users?.find((id) => id !== meId) || null;
   const opp = oppId ? participants.get(oppId) : null;
   refreshConnectivity(opp);
@@ -700,7 +707,14 @@ function buildGameSnapshot(channel, playerId) {
 // ゲーム参加（channel と client側で作った playerId を紐づけ）
 app.post("/game/join", async (req, res) => {
   const { channel, playerId } = req.body || {};
-  if (!channel || !playerId) return res.status(400).json({ error: "channel and playerId required" });
+  if (!channel || !playerId) {
+    return res.status(400).json({ error: "channel and playerId required" });
+  }
+
+  const room = rooms.get(channel);
+  if (!room) {
+    return res.status(404).json({ error: "room_not_found", exists: false });
+  }
 
   if (!games.has(channel)) {
     games.set(channel, {

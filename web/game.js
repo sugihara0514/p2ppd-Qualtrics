@@ -576,7 +576,7 @@ export function startGame(channel, rtc, opts = {}) {
     ...(currentResumeToken ? { resumeToken: currentResumeToken } : {}),
   });
 
-  rematchButton?.addEventListener("click", async () => {
+    rematchButton?.addEventListener("click", async () => {
     if (!currentResumeToken) {
       setStatus("再マッチ情報が見つかりません。ページを再読み込みしてください。", {
         typewriter: false,
@@ -599,13 +599,34 @@ export function startGame(channel, rtc, opts = {}) {
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
       currentResumeToken = data?.resumeToken || currentResumeToken;
+
+      // すぐ新しい相手と組めた場合だけ reload
+      if (data?.status === "paired" && data?.channel) {
+        setMatchCtx({
+          participantId,
+          resumeToken: currentResumeToken,
+          channel: data.channel,
+        });
+
+        window.location.reload();
+        return;
+      }
+
+      // waiting の場合は旧channelを消して、同じHTML内で待機へ戻す
       setMatchCtx({
         participantId,
         resumeToken: currentResumeToken,
-        channel: data?.channel || channel,
+        channel: null,
       });
 
-      window.location.reload();
+      enterRematchWaitingUI("再マッチ中です。新しい相手を探しています…");
+
+      if (typeof window.__PD_BEGIN_REMATCH_WAIT__ === "function") {
+        await window.__PD_BEGIN_REMATCH_WAIT__();
+      } else {
+        throw new Error("rematch wait helper missing");
+      }
+
     } catch (e) {
       console.error("rematch failed", e);
       setStatus("再マッチに失敗しました。少し待ってからもう一度お試しください。", {
@@ -614,7 +635,35 @@ export function startGame(channel, rtc, opts = {}) {
       });
       rematchButton.disabled = false;
     }
-  });  
+  });
+
+  function enterRematchWaitingUI(message = "再マッチ中です。新しい相手を探しています…") {
+    stopPolling();
+
+    canChoose = false;
+    waitingEmotion = false;
+    waitingPrediction = false;
+    waitingChoiceResult = false;
+    hasChosenThisRound = false;
+    pendingChoice = null;
+
+    resetRectsForNewRound();
+
+    setButtonsEnabled(false);
+    setChoiceWaitingUI(false);
+
+    if (choiceUI) fadeOutDisable(choiceUI);
+    if (predUI) fadeOutDisable(predUI);
+
+    setGray(emoUI, true);
+    hideBase(nextButton);
+    hideRematchButton();
+
+    setLayout("emopred");
+    ui?.classList.add("pre_match");
+
+    setStatus(message, { typewriter: false, force: true });
+  }
 
   // 録画ファイル名にも使われるroom名（channel）を保存
   qSet("pd_room", String(channel));
@@ -676,7 +725,7 @@ export function startGame(channel, rtc, opts = {}) {
     startPolling();    
   }).catch(err => {
     console.error("game/join failed", err);
-    setStatus("ゲーム初期化に失敗しました", { typewriter:false, force:true });
+    setStatus("ゲーム初期化に失敗しました。接続状態を確認してください。", { typewriter:false, force:true });
   });
 
   green_button.onclick = () => {

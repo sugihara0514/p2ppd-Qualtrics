@@ -24,6 +24,9 @@ const HEARTBEAT_MS = 5000;
 
 let queueUserId = null;
 
+let activeRtc = null;
+let activeCtx = null;
+
 function getParticipantId() {
   let pid =
     (window.__PD__ && (window.__PD__.participantId || window.__PD__.responseId)) ||
@@ -96,12 +99,83 @@ window.__PD_CANCEL_MATCH__ = async () => {
   }
 };
 
+async function leaveRtcOnly() {
+  stopHeartbeat();
+
+  try {
+    if (activeRtc) {
+      await activeRtc.leave();
+    }
+  } catch (e) {
+    console.warn("[MATCH] rtc.leave only failed", e);
+  }
+}
+
+function startWaitingForPair(onPaired) {
+  if (matchTimer) {
+    clearInterval(matchTimer);
+    matchTimer = null;
+  }
+
+  matchTimer = setInterval(async () => {
+    try {
+      const latest = readMatchCtx();
+      if (!latest?.participantId || !latest?.resumeToken) return;
+
+      const m = await pollMatch(latest);
+      console.log("[MATCH] rematch poll =>", m);
+
+      if (m && m.status === "paired" && m.channel) {
+        clearInterval(matchTimer);
+        matchTimer = null;
+
+        const nextCtx = writeMatchCtx({
+          participantId: m.participantId || latest.participantId,
+          resumeToken: m.resumeToken || latest.resumeToken,
+          channel: m.channel,
+        });
+
+        activeCtx = nextCtx;
+        window.__PD_MATCH_CTX__ = { ...(window.__PD_MATCH_CTX__ || {}), ...nextCtx };
+
+        if (typeof onPaired === "function") {
+          onPaired(nextCtx, m);
+        }
+      }
+    } catch (e) {
+      console.warn("[MATCH] rematch poll error", e);
+    }
+  }, 1500);
+}
+
+window.__PD_BEGIN_REMATCH_WAIT__ = async () => {
+  const latest = readMatchCtx();
+  if (!latest?.participantId || !latest?.resumeToken) {
+    throw new Error("match context missing");
+  }
+
+  await leaveRtcOnly();
+
+  const nextCtx = writeMatchCtx({
+    ...latest,
+    channel: null,
+  });
+
+  activeCtx = nextCtx;
+  window.__PD_MATCH_CTX__ = { ...(window.__PD_MATCH_CTX__ || {}), ...nextCtx };
+
+  startWaitingForPair(() => {
+    window.location.reload();
+  });
+};
+
 export async function enterFlow(APP_ID, useToken = true) {
   console.log("[MATCH] enterFlow called with APP_ID=", APP_ID);
   if (matching) return;
   matching = true;
 
   const rtc = createRtc(APP_ID);
+  activeRtc = rtc;
   let channel;
   let ctx = readMatchCtx();
 
@@ -125,9 +199,12 @@ export async function enterFlow(APP_ID, useToken = true) {
     channel: reg.channel || null,
   });
 
+  activeCtx = ctx;
+
   if (reg.status === "paired") {
     channel = reg.channel;
     ctx = writeMatchCtx({ ...ctx, channel });
+    activeCtx = ctx;
     console.log("[MATCH] paired immediately:", channel);
   } else {
     queueUserId = ctx.participantId;
@@ -167,6 +244,7 @@ export async function enterFlow(APP_ID, useToken = true) {
   const { token } = await getToken(channel, uid, ctx);
   await rtc.join(channel, token, uid);
   console.log("[RTC] joined", { channel, uid });
+  activeCtx = ctx;
 
   const regRtcResp = await fetch(`${API_BASE}/rtc/register`, {
     method: "POST",
