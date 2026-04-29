@@ -8,6 +8,10 @@ export function startGame(channel, rtc, opts = {}) {
    // ゲーム開始後は待機用スタイルを解除
   ui?.classList.remove("pre_match");
 
+  window.__PD_GAME_OVER__ = false;
+  window.__PD_SURVEY_READY__ = false;
+  window.__PD_REMATCHING__ = false;
+
   let baselineEmotionDone = false;
   let emotionRoundOverride = null; // 0回目用に round を上書き
   let baselineEmotionStartLogged = false;
@@ -576,7 +580,7 @@ export function startGame(channel, rtc, opts = {}) {
     ...(currentResumeToken ? { resumeToken: currentResumeToken } : {}),
   });
 
-    rematchButton?.addEventListener("click", async () => {
+  rematchButton?.addEventListener("click", async () => {
     if (!currentResumeToken) {
       setStatus("再マッチ情報が見つかりません。ページを再読み込みしてください。", {
         typewriter: false,
@@ -584,6 +588,10 @@ export function startGame(channel, rtc, opts = {}) {
       });
       return;
     }
+
+    window.__PD_GAME_OVER__ = false;
+    window.__PD_SURVEY_READY__ = false;
+    window.__PD_REMATCHING__ = false;
 
     rematchButton.disabled = true;
     setStatus("再マッチを開始しています…", { typewriter: false, force: true });
@@ -905,48 +913,79 @@ export function startGame(channel, rtc, opts = {}) {
         if (s.seats?.left) qSet("pd_room_left_pid", String(s.seats.left));
         if (s.seats?.right) qSet("pd_room_right_pid", String(s.seats.right));
 
-        // 終了
+                // 終了
         if (s.over) {
           clearInterval(pollTimer);
-          hideRematchButton();
-          // 最終ラウンドの結果が入っていればそれを採用
+
           const finalTotal =
             s.lastResult?.totals?.[pid] ??
             history[history.length - 1]?.youTotal ??
             0;
 
           const reason = s.overReason || "done";
-          qSet("pd_end_reason", reason);              // ★追加
-          qSet("pd_left_reason", s.leftReason || ""); // ★任意
+          qSet("pd_end_reason", reason);
+          qSet("pd_left_reason", s.leftReason || "");
 
-          if (reason === "player_left") {
-            setStatus("相手が離脱したためゲームを終了します。「→」で次へ進んでください。", { typewriter:false, force:true });
-          } else {
-            setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。「→」ボタンで次へ進んでください。`, { typewriter:false, force:true });
-          }
-            
-          // setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。「→」ボタンで次へ進んでください。`, { typewriter:false, force:true });
-          lastResultRoundHandled = s.lastResult?.round ?? lastResultRoundHandled; // このラウンドはもう処理したマーク
+          lastResultRoundHandled = s.lastResult?.round ?? lastResultRoundHandled;
           setButtonsEnabled(false);
 
-          window.__PD_GAME_OVER__ = true;
+          // 正式終了だけアンケートへ進める
+          if (reason === "game_finished" || reason === "player_left") {
+            hideRematchButton();
 
-          // ゲーム終了時に録画停止 + チャンネル離脱（match.jsの__PD_LEAVE__を呼ぶ）
-          // try {
-          //   if (!window.__PD_LEAVE_CALLED__ && typeof window.__PD_LEAVE__ === "function") {
-          //     window.__PD_LEAVE_CALLED__ = true; // 二重呼び出し防止
-          //     window.__PD_LEAVE__();             // match.js内で rtc.leave → record/stop の順に実行される
-          //   }
-          // } catch (e) {
-          //   console.warn("leave on game over failed", e);
-          // }
-          console.log("[game over] skip immediate leave for debugging");
+            if (reason === "player_left") {
+              setStatus("相手が離脱したためゲームを終了します。「→」で次へ進んでください。", {
+                typewriter: false,
+                force: true,
+              });
+            } else {
+              setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。「→」ボタンで次へ進んでください。`, {
+                typewriter: false,
+                force: true,
+              });
+            }
 
+            window.__PD_GAME_OVER__ = true;
+            window.__PD_SURVEY_READY__ = true;
+            window.__PD_REMATCHING__ = false;
+            console.log("[game over] formal finish");
+            return;
+          }
+
+          // 再マッチ対象の終了は、次へを出さない
+          if (reason === "opponent_disconnected") {
+            window.__PD_GAME_OVER__ = false;
+            window.__PD_SURVEY_READY__ = false;
+            window.__PD_REMATCHING__ = false;
+
+            showRematchButton();
+            setStatus("相手との接続が切れました。再マッチする場合は「🔄 再マッチ」を押してください。", {
+              typewriter: false,
+              force: true,
+            });
+            return;
+          }
+
+          // その他は安全側でアンケートへ進めない
+          window.__PD_GAME_OVER__ = false;
+          window.__PD_SURVEY_READY__ = false;
+          window.__PD_REMATCHING__ = false;
+
+          hideRematchButton();
+          setStatus("ゲームは終了しましたが、次へ進む条件を確認中です。", {
+            typewriter: false,
+            force: true,
+          });
           return;
         }
 
         // 相手の通信断。一定時間までは待機、一定時間を超えたら再マッチだけ許可。
         if (s.opponentConnected === false) {
+
+          window.__PD_GAME_OVER__ = false;
+          window.__PD_SURVEY_READY__ = false;
+          window.__PD_REMATCHING__ = false;
+
           canChoose = false;
           waitingEmotion = false;
           waitingPrediction = false;

@@ -664,7 +664,7 @@ function buildGameSnapshot(channel, playerId) {
   const g = games.get(channel);
   const room = rooms.get(channel);
 
-  if (!g) return { exists: false };
+    if (!g || !room) return { exists: false };
 
   const meId = String(playerId || "");
   const myTotal = g.totals.get(meId) || 0;
@@ -1004,6 +1004,8 @@ app.post("/game/emotion", (req, res) => {
     if (rNow >= MAX_ROUNDS) {
       g.over = true;
       g.stage = "done";
+      g.overReason = "game_finished";
+
       const room = rooms.get(channel);
       const leftPid = room?.seats?.left || null;
       const rightPid = room?.seats?.right || null;
