@@ -576,8 +576,10 @@ app.post("/heartbeat", (req, res) => {
   refreshConnectivity(opp);
 
   const opponentConnected = !!oppId && isConnected(opp);
-  const rematchEligible = !!oppId && !!opp?.disconnectedAt && (nowMs() - opp.disconnectedAt >= REMATCH_GRACE_MS);
-
+  const rematchEligible =
+    !!oppId &&
+    !!opp &&
+    (opp.finalLeft || (!!opp.disconnectedAt && (nowMs() - opp.disconnectedAt >= REMATCH_GRACE_MS)));
   return res.json({
     ok: true,
     channel: p.channel || null,
@@ -1097,10 +1099,29 @@ app.post("/leave", async (req, res) => {
   if (!participantId) return res.status(400).json({ error: "participantId required" });
 
   const p = findAuthedParticipant(participantId, resumeToken);
-  if (!p) return res.json({ ok: true }); // idempotent
+  if (!p) return res.json({ ok: true });
 
   removeFromQueue(participantId);
 
+  // 緊急離脱は「相手だけ再マッチ可能」にするため、部屋はすぐ閉じない
+  if (reason === "user_exit" && p.channel && rooms.has(p.channel)) {
+    const g = games.get(p.channel);
+    if (g && !g.over) {
+      g.leftBy = participantId;
+      g.leftReason = reason;
+      g.overReason = "opponent_left";
+      // g.over は立てない
+      // g.stage も done にしない
+    }
+
+    p.finalLeft = true;
+    p.disconnectedAt = nowMs();
+    p.channel = null;   // 離脱した本人だけ外す
+
+    return res.json({ ok: true, rematchForOpponent: true });
+  }
+
+  // それ以外の離脱は従来どおり
   if (p.channel && rooms.has(p.channel)) {
     await finalizeRoom(p.channel, {
       overReason: "player_left",
