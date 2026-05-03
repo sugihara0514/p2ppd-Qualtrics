@@ -6,7 +6,7 @@ import { v4 as uuid } from "uuid";
 import pkg from "agora-access-token";
 const { RtcTokenBuilder, RtcRole } = pkg;
 
-const MAX_ROUNDS = 5;
+const MAX_ROUNDS = 3;
 
 // QualtricsのURLを許可する
 const allowedOrigin = [
@@ -81,7 +81,7 @@ function buildStorageConfig(channel) {
     accessKey,
     secretKey,
     // バケット内のパス: pd/<channel>/...
-    fileNamePrefix: ["test0321", safeSegment], //supabaseのpdフォルダに録画を保存
+    fileNamePrefix: ["test0503", safeSegment], //supabaseのpdフォルダに録画を保存
   };
   if (endpoint) {
     cfg.extensionParams = { endpoint };
@@ -659,7 +659,24 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API on :${PORT}`));
 
 // --- 囚人のジレンマ ---
-const PAYOFF = { CC:[2,2], CD:[0,3], DC:[3,0], DD:[1,1] };
+// const PAYOFF = { CC:[2,2], CD:[0,3], DC:[3,0], DD:[1,1] };
+
+// --- Split or Steal ---
+const PAYOFF = {
+  CC: [1500, 1500], // Split / Split
+  CD: [0, 2000],    // Split / Steal
+  DC: [2000, 0],    // Steal / Split
+  DD: [0, 0],       // Steal / Steal
+};
+
+function getRoundPayoff(round, key) {
+  // 1,2ラウンド目は練習
+  if (round < MAX_ROUNDS) return [0, 0];
+
+  // 3ラウンド目のみ本番
+  return PAYOFF[key] || [0, 0];
+}
+
 const games = new Map();
 
 function buildGameSnapshot(channel, playerId) {
@@ -870,7 +887,8 @@ app.post("/game/choice", async (req, res) => {
     const c1 = g.choices.get(p1) ?? "C";
     const c2 = g.choices.get(p2) ?? "C";
     const key = c1 + c2;
-    const [pay1, pay2] = PAYOFF[key];
+    // const [pay1, pay2] = PAYOFF[key];
+    const [pay1, pay2] = getRoundPayoff(rNow, key);
 
     g.totals.set(p1, (g.totals.get(p1) || 0) + pay1);
     g.totals.set(p2, (g.totals.get(p2) || 0) + pay2);

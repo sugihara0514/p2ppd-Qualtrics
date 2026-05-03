@@ -213,7 +213,7 @@ export function startGame(channel, rtc, opts = {}) {
   });
 
   // ラウンド数
-  const MAX_ROUNDS = 5;
+  const MAX_ROUNDS = 3;
   const round_N = document.getElementById("round_N");
 
   function renderRound() {
@@ -223,11 +223,11 @@ export function startGame(channel, rtc, opts = {}) {
 
   // 追加コメント
   const ROUND_CHOICE_COMMENTS = {
-    1: "今回どうするか、一言相談してみてください",
-    2: "相手がどう考えているか聞いてみてください",
-    3: "なぜそうしたいか伝えてみてください",
-    4: "今回の進め方を短く相談してみてください",
-    5: "最後のラウンドをどうするか話してみてください",
+    1: "練習一回目です。操作に慣れながら、相手と相談してプレイしてみてください。",
+    2: "練習二回目です。本番を意識してプレイしてみてください。",
+    3: "本番です。このラウンドの結果に応じて報酬が決まります。より良い結果になるよう頑張ってください。",
+    // 4: "今回の進め方を短く相談してみてください",
+    // 5: "最後のラウンドをどうするか話してみてください",
   };
 
   function getRoundChoiceComment(round) {
@@ -237,6 +237,14 @@ export function startGame(channel, rtc, opts = {}) {
   // 合計得点表示
   const opp_total_score = document.getElementById("opp_total_score");
   const you_total_score = document.getElementById("you_total_score");
+
+  // 合計得点非表示
+  if (you_total_score?.parentElement) {
+    you_total_score.parentElement.style.display = "none";
+  }
+  if (opp_total_score?.parentElement) {
+    opp_total_score.parentElement.style.display = "none";
+  }
 
   // カメラマイクミュート
   const micToggleBtn = document.getElementById("mic_button");
@@ -939,7 +947,7 @@ export function startGame(channel, rtc, opts = {}) {
                 force: true,
               });
             } else {
-              setStatus(`ゲーム終了！あなたの合計=${finalTotal}。お疲れさまでした。「→」ボタンで次へ進んでください。`, {
+              setStatus(`ゲーム終了！あなたの本番ラウンドの報酬は ${finalTotal}円 です。お疲れさまでした。「→」ボタンで次へ進んでください。`, {
                 typewriter: false,
                 force: true,
               });
@@ -1161,8 +1169,14 @@ export function startGame(channel, rtc, opts = {}) {
               highlightByOutcome(youChoice, oppChoice);
             }
 
-            // status.textContent = `Round ${currentRound}/${MAX_ROUNDS} 結果: あなた=${youChoice}, 相手=${oppChoice} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
-            lastResultText = `Round ${resultRound}/${MAX_ROUNDS} 結果: あなた=${choiceLabel(youChoice)}, 相手=${choiceLabel(oppChoice)} ⇒ 利得 ${youPayoff}（累計 ${youTotal}）`;
+            if (resultRound < MAX_ROUNDS) {
+              lastResultText =
+                `Round ${resultRound}/${MAX_ROUNDS} 結果: あなた=${choiceLabel(youChoice)}, 相手=${choiceLabel(oppChoice)}。` +
+                `このラウンドは練習です。`;
+            } else {
+              lastResultText =
+                `Round ${resultRound}/${MAX_ROUNDS} 結果: あなた=${choiceLabel(youChoice)}, 相手=${choiceLabel(oppChoice)} ⇒ 報酬 ${youPayoff}円`;
+            }
 
             // 履歴に追加してEmbedded Dataにも反映（途中経過も欲しければ）
             history.push({
