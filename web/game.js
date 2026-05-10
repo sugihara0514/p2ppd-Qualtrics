@@ -223,11 +223,9 @@ export function startGame(channel, rtc, opts = {}) {
 
   // 追加コメント
   const ROUND_CHOICE_COMMENTS = {
-    1: "練習一回目です。操作に慣れながら、相手と相談してプレイしてみてください。",
-    2: "練習二回目です。本番を意識してプレイしてみてください。",
-    3: "本番です。このラウンドの結果に応じて報酬が決まります。より良い結果になるよう頑張ってください。",
-    // 4: "今回の進め方を短く相談してみてください",
-    // 5: "最後のラウンドをどうするか話してみてください",
+    1: "練習1回目です。\n操作に慣れながら、相手と相談してみてください。",
+    2: "練習2回目です。\n本番を意識してプレイしてみてください。",
+    3: "本番です。\nこのラウンドの結果に応じて報酬が決まります。",
   };
 
   function getRoundChoiceComment(round) {
@@ -749,7 +747,7 @@ export function startGame(channel, rtc, opts = {}) {
     pendingChoice = "C";
     showYouRect("C");
     highlightByYouChoice("C");
-    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑を選択中。次へで確定。`, { typewriter:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}\n緑を選択中です。\n「次へ」で確定してください。`, { typewriter:true });
     updateNextEnabled();
   };
 
@@ -758,7 +756,7 @@ export function startGame(channel, rtc, opts = {}) {
     pendingChoice = "D";
     showYouRect("D");
     highlightByYouChoice("D");
-    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 青を選択中。次へで確定。`, { typewriter:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}\n青を選択中です。\n「次へ」で確定してください。`, { typewriter:true });
     updateNextEnabled();
   };
 
@@ -843,7 +841,7 @@ export function startGame(channel, rtc, opts = {}) {
   async function submitChoice() {
     if (!canChoose) return;
     if (!pendingChoice) {
-      setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 緑か青を選んでください。`, { typewriter:false, force:true });
+      setStatus(`Round ${currentRound}/${MAX_ROUNDS}\n 緑か青を選んでください。`, { typewriter:false, force:true });
       return;
     }
 
@@ -878,7 +876,7 @@ export function startGame(channel, rtc, opts = {}) {
       roundStartAt = null;
     }
 
-    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 確定=${choiceLabel(choice)}。相手の結果待ち…`, { typewriter:false, force:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}\n確定=${choiceLabel(choice)}。相手の結果待ち…`, { typewriter:false, force:true });
     const body = { channel, playerId: pid, round: currentRound, choice };
     const resp = await fetch(`${API_BASE}/game/choice`, {
       method: "POST",
@@ -947,7 +945,7 @@ export function startGame(channel, rtc, opts = {}) {
                 force: true,
               });
             } else {
-              setStatus(`ゲーム終了！あなたの本番ラウンドの報酬は ${finalTotal}円 です。お疲れさまでした。「→」ボタンで次へ進んでください。`, {
+              setStatus(`ゲーム終了！\nあなたの本番ラウンドの報酬は ${finalTotal}円 です。\n「→」ボタンで次へ進んでください。`, {
                 typewriter: false,
                 force: true,
               });
@@ -1074,7 +1072,7 @@ export function startGame(channel, rtc, opts = {}) {
 
             hideBase(nextButton);
 
-            setStatus(`Round ${currentRound}/${MAX_ROUNDS}: あなたの選択は送信済みです。相手の結果を待っています…`, {
+            setStatus(`Round ${currentRound}/${MAX_ROUNDS}\nあなたの選択は送信済みです。\n相手の結果を待っています…`, {
               typewriter:false,
               force:true,
             });
@@ -1088,7 +1086,7 @@ export function startGame(channel, rtc, opts = {}) {
             const roundComment = getRoundChoiceComment(currentRound);
 
             setStatus(
-              `Round ${currentRound}/${MAX_ROUNDS}: 緑か青を選び、次へで確定してください。` +
+              `Round ${currentRound}/${MAX_ROUNDS}\n緑か青を選び、次へで確定してください。` +
               (roundComment ? `\n${roundComment}` : ""),
               {
                 typewriter: true,
@@ -1124,7 +1122,7 @@ export function startGame(channel, rtc, opts = {}) {
             if (choiceUI) fadeOutDisable(choiceUI);
             setGray(emoUI, true);
             hideBase(nextButton);
-            setStatus(`Round ${(s.lastResult?.round ?? currentRound)}/${MAX_ROUNDS}: 感情は送信済みです。相手の入力を待っています…`, {
+            setStatus(`Round ${(s.lastResult?.round ?? currentRound)}/${MAX_ROUNDS}\n感情は送信済みです。\n相手の入力を待っています…`, {
               typewriter:false,
               force:true,
             });
@@ -1171,11 +1169,14 @@ export function startGame(channel, rtc, opts = {}) {
 
             if (resultRound < MAX_ROUNDS) {
               lastResultText =
-                `Round ${resultRound}/${MAX_ROUNDS} 結果: あなた=${choiceLabel(youChoice)}, 相手=${choiceLabel(oppChoice)}。` +
+                `Round ${resultRound}/${MAX_ROUNDS} 結果\n` +
+                `あなた=${choiceLabel(youChoice)}、相手=${choiceLabel(oppChoice)}\n` +
                 `このラウンドは練習です。`;
             } else {
               lastResultText =
-                `Round ${resultRound}/${MAX_ROUNDS} 結果: あなた=${choiceLabel(youChoice)}, 相手=${choiceLabel(oppChoice)} ⇒ 報酬 ${youPayoff}円`;
+                `Round ${resultRound}/${MAX_ROUNDS} 結果\n` +
+                `あなた=${choiceLabel(youChoice)}、相手=${choiceLabel(oppChoice)}\n` +
+                `報酬 ${youPayoff}円`;
             }
 
             // 履歴に追加してEmbedded Dataにも反映（途中経過も欲しければ）
@@ -1336,7 +1337,7 @@ export function startGame(channel, rtc, opts = {}) {
     fadeInEnable(nextButton);
 
     pred_slider.value = pred_slider.defaultValue || "0";
-    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手が何を選ぶか予測してください`, { typewriter:true, force:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}\n相手が何を選ぶか予測してください`, { typewriter:true, force:true });
     updateNextEnabled();
   }
 
@@ -1366,7 +1367,7 @@ export function startGame(channel, rtc, opts = {}) {
     // 相手待ち表示：予測UIは閉じる / next も隠す
     fadeOutDisable(predUI);
     hideBase(nextButton);
-    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の予測が終わるのを待っています…`, { typewriter:false, force:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}\n相手の予測が終わるのを待っています…`, { typewriter:false, force:true });
     updateNextEnabled();
   }
 
@@ -1403,7 +1404,7 @@ export function startGame(channel, rtc, opts = {}) {
       emotionRoundOverride = null;
       baselineEmotionDone = true;
 
-      // ★追加：baseline完了をサーバに通知（相手待ち制御用）
+      // baseline完了をサーバに通知（相手待ち制御用）
       try {
         await fetch(`${API_BASE}/game/ready`, {
           method: "POST",
@@ -1440,7 +1441,7 @@ export function startGame(channel, rtc, opts = {}) {
       console.error("game/emotion failed", e);
     }
 
-    setStatus(`Round ${currentRound}/${MAX_ROUNDS}: 相手の感情入力が終わるのを待っています…`, { typewriter:false, force:true });
+    setStatus(`Round ${currentRound}/${MAX_ROUNDS}\n相手の感情入力が終わるのを待っています…`, { typewriter:false, force:true });
     updateNextEnabled();
   }
 
