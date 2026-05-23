@@ -217,8 +217,10 @@ export function startGame(channel, rtc, opts = {}) {
   const round_N = document.getElementById("round_N");
 
   function renderRound() {
-    if (!round_N) return;
-    round_N.textContent = String(currentRound);
+    if (round_N) {
+      round_N.textContent = String(currentRound);
+    }
+    renderMatrixPayoff(currentRound);
   }
 
   // 追加コメント
@@ -286,6 +288,50 @@ export function startGame(channel, rtc, opts = {}) {
   const cellCD = document.getElementById("cell_CD");
   const cellDC = document.getElementById("cell_DC");
   const cellDD = document.getElementById("cell_DD");
+
+  const payoffText = {
+    CC: {
+      you: document.getElementById("you_CC"),
+      opp: document.getElementById("opp_CC"),
+    },
+    CD: {
+      you: document.getElementById("you_CD"),
+      opp: document.getElementById("opp_CD"),
+    },
+    DC: {
+      you: document.getElementById("you_DC"),
+      opp: document.getElementById("opp_DC"),
+    },
+    DD: {
+      you: document.getElementById("you_DD"),
+      opp: document.getElementById("opp_DD"),
+    },
+  };
+
+  const PRACTICE_PAYOFF_DISPLAY = {
+    CC: { you: "2", opp: "2" },
+    CD: { you: "0", opp: "3" },
+    DC: { you: "3", opp: "0" },
+    DD: { you: "1", opp: "1" },
+  };
+  
+  const REAL_PAYOFF_DISPLAY = {
+    CC: { you: "400", opp: "400" },
+    CD: { you: "0",    opp: "600" },
+    DC: { you: "600", opp: "0" },
+    DD: { you: "200",    opp: "200" },
+  };
+
+  function renderMatrixPayoff(round) {
+    const display = round < MAX_ROUNDS
+      ? PRACTICE_PAYOFF_DISPLAY
+      : REAL_PAYOFF_DISPLAY;
+  
+    Object.keys(payoffText).forEach((key) => {
+      if (payoffText[key].you) payoffText[key].you.textContent = display[key].you;
+      if (payoffText[key].opp) payoffText[key].opp.textContent = display[key].opp;
+    });
+  }
 
   const matrixCells = {
     CC: cellCC,
