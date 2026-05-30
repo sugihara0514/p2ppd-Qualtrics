@@ -81,7 +81,7 @@ function buildStorageConfig(channel) {
     accessKey,
     secretKey,
     // バケット内のパス: pd/<channel>/...
-    fileNamePrefix: ["test0503", safeSegment], //supabaseのpdフォルダに録画を保存
+    fileNamePrefix: ["test0530", safeSegment], //supabaseのpdフォルダに録画を保存
   };
   if (endpoint) {
     cfg.extensionParams = { endpoint };
@@ -757,9 +757,9 @@ app.post("/game/join", async (req, res) => {
 
   // プレイヤーが2人揃ったら録画開始（既に開始済みなら内部でなにもしない）
   // 録画停止してテストする場合はここをコメントアウト
-  // if (g.players.size >= 2) {
-  //   startCloudRecording(channel);
-  // }
+  if (g.players.size >= 2) {
+    startCloudRecording(channel);
+  }
 
   return res.json({
     ok: true,
