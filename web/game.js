@@ -668,6 +668,14 @@ export function startGame(channel, rtc, opts = {}) {
           channel: data.channel,
         });
 
+        try {
+          if (rtc && typeof rtc.leave === "function") {
+            await rtc.leave();
+          }
+        } catch (e) {
+          console.warn("rtc.leave before rematch reload failed", e);
+        }
+
         window.location.reload();
         return;
       }

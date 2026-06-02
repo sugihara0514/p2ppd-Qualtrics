@@ -279,11 +279,20 @@ if (recToken) clientRequest.token = recToken;
 async function stopCloudRecording(channel) {
   try {
     const info = recordings.get(channel);
-    if (!info) return;
-
-    recordings.delete(channel);
+    if (!info) {
+      console.warn("[recording] stop skipped: no active recording", { channel });
+      return null;
+    }
 
     const { resourceId, sid, uid } = info;
+
+    console.log("[recording] stopping", {
+      channel,
+      resourceId,
+      sid,
+      uid,
+    });
+
     const stopResp = await fetch(
       `https://api.agora.io/v1/apps/${APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/stop`,
       {
@@ -299,16 +308,37 @@ async function stopCloudRecording(channel) {
         }),
       }
     );
-    const stopData = await stopResp.json();
-    if (!stopResp.ok) {
-      console.error("[recording] stop failed", stopData);
-    } else {
-      console.log("[recording] stopped", channel, stopData);
-      console.log("[recording] uploadingStatus", stopData?.serverResponse?.uploadingStatus);
-      console.log("[recording] fileList", JSON.stringify(stopData?.serverResponse?.fileList, null, 2));
+
+    const stopText = await stopResp.text();
+    let stopData = null;
+    try {
+      stopData = stopText ? JSON.parse(stopText) : null;
+    } catch {
+      stopData = { raw: stopText };
     }
+
+    console.log("[recording] stop status", stopResp.status);
+    console.log("[recording] stop body", JSON.stringify(stopData, null, 2));
+
+    if (!stopResp.ok) {
+      console.error("[recording] stop failed", {
+        channel,
+        status: stopResp.status,
+        body: stopData,
+      });
+      return null;
+    }
+
+    recordings.delete(channel);
+
+    console.log("[recording] stopped", channel, stopData);
+    console.log("[recording] uploadingStatus", stopData?.serverResponse?.uploadingStatus);
+    console.log("[recording] fileList", JSON.stringify(stopData?.serverResponse?.fileList, null, 2));
+
+    return stopData;
   } catch (err) {
     console.error("[recording] stop error", err);
+    return null;
   }
 }
 
@@ -940,7 +970,7 @@ app.post("/game/choice", async (req, res) => {
 });
 
 // 感情スライダーの結果を送信
-app.post("/game/emotion", (req, res) => {
+app.post("/game/emotion", async (req, res) => {
   const { channel, playerId, round, emo1, emo2, emo3, emo4, emo5, emo6, emo7, emo8, emo9, emo10 } = req.body || {};
   if (!channel || !playerId ||
       emo1 == null || emo2 == null || emo3 == null || emo4 == null || emo5 == null ||
@@ -1029,6 +1059,7 @@ app.post("/game/emotion", (req, res) => {
       const room = rooms.get(channel);
       const leftPid = room?.seats?.left || null;
       const rightPid = room?.seats?.right || null;
+
       logPhaseEvent(channel, {
         round: rNow,
         phase: "game_finished",
@@ -1039,6 +1070,12 @@ app.post("/game/emotion", (req, res) => {
         leftTotal: leftPid ? (g.totals.get(leftPid) || 0) : 0,
         rightTotal: rightPid ? (g.totals.get(rightPid) || 0) : 0,
       });
+
+      // 正式終了時点で録画を停止する
+      if (!g.recordingStopRequested) {
+        g.recordingStopRequested = true;
+        await stopCloudRecording(channel);
+      }
     } else {
       g.round = rNow + 1;
       g.stage = "choice";
@@ -1121,15 +1158,65 @@ app.post("/leave", async (req, res) => {
 
   removeFromQueue(participantId);
 
+  // 正式終了後の離脱。
+  // 録画は /game/emotion 側で止まる想定だが、保険でここでも止める。
+  if (reason === "game_finished" && p.channel && rooms.has(p.channel)) {
+    const oldChannel = p.channel;
+    const g = games.get(oldChannel);
+    const room = rooms.get(oldChannel);
+
+    if (g) {
+      g.over = true;
+      g.stage = "done";
+      g.overReason = "game_finished";
+
+      if (!g.recordingStopRequested) {
+        g.recordingStopRequested = true;
+        await stopCloudRecording(oldChannel);
+      }
+    } else {
+      await stopCloudRecording(oldChannel);
+    }
+
+    p.finalLeft = true;
+    p.disconnectedAt = nowMs();
+    p.channel = null;
+
+    // 2人とも最終離脱したら掃除する
+    const everyoneLeft = room?.users?.every((pid) => {
+      const pp = participants.get(pid);
+      return !pp || pp.finalLeft || pp.channel !== oldChannel;
+    });
+
+    if (everyoneLeft) {
+      rooms.delete(oldChannel);
+      games.delete(oldChannel);
+      phaseEvents.delete(oldChannel);
+    }
+
+    return res.json({ ok: true, reason: "game_finished" });
+  }
+
   // 緊急離脱は「相手だけ再マッチ可能」にするため、部屋はすぐ閉じない
   if (reason === "user_exit" && p.channel && rooms.has(p.channel)) {
-    const g = games.get(p.channel);
+    const oldChannel = p.channel;
+
+    const g = games.get(p.oldChannel);
     if (g && !g.over) {
       g.leftBy = participantId;
       g.leftReason = reason;
       g.overReason = "opponent_left";
       // g.over は立てない
       // g.stage も done にしない
+    }
+
+    // 緊急離脱時点で旧録画は止める。
+    // 相手が再マッチする場合は、新しい room で新しい録画を開始する。
+    if (g && !g.recordingStopRequested) {
+      g.recordingStopRequested = true;
+      await stopCloudRecording(oldChannel);
+    } else {
+      await stopCloudRecording(oldChannel);
     }
 
     p.finalLeft = true;
@@ -1155,7 +1242,7 @@ app.post("/leave", async (req, res) => {
   return res.json({ ok: true });
 });
 
-app.post("/game/leave", (req, res) => {
+app.post("/game/leave", async (req, res) => {
   const { channel, playerId, reason } = req.body || {};
   if (!channel || !playerId) return res.status(400).json({ error: "channel and playerId required" });
 
@@ -1167,6 +1254,11 @@ app.post("/game/leave", (req, res) => {
   g.overReason = "player_left";
   g.leftBy = String(playerId);
   g.leftReason = reason || "user_exit";
+
+  if (!g.recordingStopRequested) {
+    g.recordingStopRequested = true;
+    await stopCloudRecording(channel);
+  }
 
   return res.json({ ok: true });
 });
