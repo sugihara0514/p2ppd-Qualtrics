@@ -999,7 +999,7 @@ export function startGame(channel, rtc, opts = {}) {
                 force: true,
               });
             } else {
-              setStatus(`ゲーム終了！\nあなたの本番ラウンドの報酬は ${finalTotal}円 です。\n「→」ボタンで次へ進んでください。`, {
+              setStatus(`ゲーム終了！\nあなたの本番ラウンドの報酬は ${finalTotal}pt です。\n「→」ボタンで次へ進んでください。`, {
                 typewriter: false,
                 force: true,
               });
@@ -1230,7 +1230,7 @@ export function startGame(channel, rtc, opts = {}) {
               lastResultText =
                 `Round ${resultRound}/${MAX_ROUNDS} 結果\n` +
                 `あなた=${choiceLabel(youChoice)}、相手=${choiceLabel(oppChoice)}\n` +
-                `報酬 ${youPayoff}円`;
+                `報酬 ${youPayoff}pt`;
             }
 
             // 履歴に追加してEmbedded Dataにも反映（途中経過も欲しければ）
