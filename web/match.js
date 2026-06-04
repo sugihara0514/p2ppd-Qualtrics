@@ -75,12 +75,38 @@ function softPause() {
 }
 
 window.__PD_SOFT_PAUSE__ = softPause;
-window.addEventListener("pagehide", softPause, { capture: true });
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") {
-    softPause();
+
+let hiddenPauseTimer = null;
+
+window.addEventListener("pagehide", () => {
+  // 正式終了処理中は pause を送らない
+  if (window.__PD_SURVEY_READY__ === true || window.__PD_LEAVE_CALLED__ === true) {
     return;
   }
+  softPause();
+}, { capture: true });
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    // 正式終了処理中は pause を送らない
+    if (window.__PD_SURVEY_READY__ === true || window.__PD_LEAVE_CALLED__ === true) {
+      return;
+    }
+
+    // 一瞬のタブ切替・Qualtrics内部遷移で即切断扱いにしない
+    hiddenPauseTimer = setTimeout(() => {
+      hiddenPauseTimer = null;
+      softPause();
+    }, 15000);
+
+    return;
+  }
+
+  if (hiddenPauseTimer) {
+    clearTimeout(hiddenPauseTimer);
+    hiddenPauseTimer = null;
+  }
+
   const ctx = readMatchCtx();
   if (ctx?.channel) startHeartbeat(ctx);
 });

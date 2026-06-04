@@ -17,7 +17,7 @@ const corsOptions = {
   origin: allowedOrigin,
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: false,
+  credentials: true,
   optionsSuccessStatus: 204, // プリフライトに 204 を返す
 };
 
@@ -26,6 +26,7 @@ const app = express();
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 console.log("[env-check]", {
   hasSUPABASE_URL: !!process.env.SUPABASE_URL,
@@ -1201,7 +1202,7 @@ app.post("/leave", async (req, res) => {
   if (reason === "user_exit" && p.channel && rooms.has(p.channel)) {
     const oldChannel = p.channel;
 
-    const g = games.get(p.oldChannel);
+    const g = games.get(oldChannel);
     if (g && !g.over) {
       g.leftBy = participantId;
       g.leftReason = reason;

@@ -1005,6 +1005,10 @@ export function startGame(channel, rtc, opts = {}) {
               });
             }
 
+            try {
+              localStorage.setItem("pd_finished_" + participantId, "1");
+            } catch (e) {}
+
             window.__PD_GAME_OVER__ = true;
             window.__PD_SURVEY_READY__ = true;
             window.__PD_REMATCHING__ = false;
