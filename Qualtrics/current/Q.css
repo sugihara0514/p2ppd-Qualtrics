@@ -1,0 +1,1614 @@
+h1 {
+    /*margin-left: 10%;
+    margin-bottom: 20px;*/
+ 
+    /*
+    margin-left: auto;
+    margin-right: auto;*/
+    text-align: center;
+ 
+    font-size: 25px;
+    color: black;
+ 
+    border-bottom-width: 3px;
+    border-bottom-style: solid;
+    border-bottom-color: rgb(143, 143, 143);
+ 
+    /*width: 80%;*/
+ 
+  }
+ 
+  h2 {
+    /*margin-left: 10%;
+    margin-bottom: 20px;*/
+ 
+    /*margin-left: 10%;*/
+    text-align: left;
+ 
+    font-size: 20px;
+    color: black;
+ 
+    border-bottom-width: 3px;
+    border-bottom-style: solid;
+    border-bottom-color: rgb(143, 143, 143);
+ 
+    /*width: 70%;*/
+ 
+  }
+ 
+  p {
+    margin-left: auto;
+    margin-right: auto;
+    /*width: 80%;*/
+ 
+    /*font-size: 18px;*/
+ 
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+ 
+ 
+  .img_fullPack {
+    padding: 10px;
+    margin: 10px;
+ 
+    border-width: 1px;
+    border-style: solid;
+  }
+ 
+  .img_top_under_Pack {
+    padding-top: 10px;
+    margin-top: 10px;
+ 
+    border-top-style: solid;
+    border-top-width: 1px;
+ 
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+ 
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+  }
+ 
+  .img_listing {
+    width: 40%;
+ 
+  }
+ 
+  .li_raretu {
+    margin-top: 10px;
+  }
+ 
+  .font_heavy {
+    font-weight: bolder;
+    /*font-size: larger;*/
+ 
+    margin-left: 5px;
+    margin-right: 5px;
+  }
+ 
+  .font_green {
+      /*color: green;*/
+    color: black;
+  }
+ 
+  .font_blue {
+      /*color: blue;*/
+    color: black;
+  }
+ 
+  .font_red {
+      /*color: red;*/
+    color: black;
+  }
+ 
+  .font_hide {
+      color: white;
+  }
+ 
+ 
+  .move_back {
+    margin-top: 100px;
+  }
+ 
+  .centered {
+    text-align: center;
+  }
+ 
+ 
+  .draw_circle {
+    position: absolute;
+ 
+    border-color: rgba(255, 51, 51, 0.8);
+    width: 20%;
+    height: 27%;
+    border-radius: 100%;
+    border-style: dashed;
+    border-width: 5px;
+  }
+ 
+  .circle_left {
+    left: 47.5%;
+ 
+  }
+ 
+  .circle_right {
+    left: 69%;
+  }
+ 
+  .circle_top {
+    top: 35%;
+   
+  }
+ 
+  .circle_bottom {
+    top: 62%;
+ 
+  }
+ 
+ 
+  .slider-holder {
+  padding: 15px;
+  margin: 10px;
+  margin-left: 100px;
+  margin-right: 30px;
+  }
+ 
+  .value1 {
+  font-size: 20px;
+  margin: 10px 0px 0px 30px;
+  display: inline-block;
+  }
+ 
+  .value2 {
+  font-size: 20px;
+  margin: 10px 0px 0px 30px;
+  display: inline-block;
+  }
+   
+  .steps {
+  border: 1px solid transparent;
+  width: 100%;
+  position: relative;
+  height: 45px;
+  }
+   
+  .tick_frame {
+  border: 1px solid transparant;
+  position: absolute;
+  width: 55px;
+  margin-left: -28px;
+  margin-bottom: 50px;
+  text-align: center;
+  left: 0;
+  }
+   
+  .number {
+  border: 1px solid;
+  font-size: 20px;
+  padding: 7px;
+  margin-left: -15px;
+  margin: 0;
+  }
+   
+  .player {
+  width: 60px;
+  border: 1px solid transparent;
+  font-size: 20px;
+  padding: 7px;
+  margin-left: -15px;
+  margin: 0;
+  }
+   
+  .tick {
+  border: 1px solid transparent;
+  margin: 0;
+  }
+ 
+ 
+  .slider-holder {  
+      padding: 15px;
+      margin: 10px;
+      margin-left: 100px;
+      margin-right: 30px;
+      }
+     
+      .steps {
+      border: 1px solid transparent;
+      width: 100%;
+      position: relative;
+      height: 45px;
+      }
+     
+      .tick_frame {
+      border: 1px solid transparant;
+      position: absolute;
+      width: 55px;
+      margin-left: -28px;
+      margin-bottom: 50px;
+      text-align: center;
+      left: 0;
+      }
+     
+      .number {
+      border: 1px solid;
+      font-size: 20px;
+      padding: 7px;
+      margin-left: -15px;
+      margin: 0;
+      }
+     
+      .player {
+      width: 80px;
+      padding: 0px;
+      border: 1px solid transparent;
+      font-size: 20px;
+      margin-left: 0px;
+      margin: 0;
+      text-align: left;
+      }
+     
+      .tick {
+      border: 1px solid transparent;
+      margin: 0;
+      }
+     
+      .progress_value .ui-progressbar-value{
+      background-color: #0091e4;
+      width: 50%;
+      }
+     
+      .num_frame {
+      position: absolute;
+      width: 20px;
+      }
+     
+      .num {
+      font-size: 10px;
+      }
+      .scale_num{
+      height:20px;
+      position: relative;
+      margin-right: 10px;
+      }
+ 
+      .progress_field{
+          margin-left: 115px;
+          margin-right: 17.5px;
+      }
+     
+      .value{
+      font-size: 20px;
+      margin-left: 15px;
+      }
+ 
+  progress{
+      width:100%;
+  }
+ 
+h1 {
+    /*margin-left: 10%;
+    margin-bottom: 20px;*/
+ 
+    /*
+    margin-left: auto;
+    margin-right: auto;*/
+    text-align: center;
+ 
+    font-size: 25px;
+    color: black;
+ 
+    border-bottom-width: 3px;
+    border-bottom-style: solid;
+    border-bottom-color: rgb(143, 143, 143);
+ 
+    /*width: 80%;*/
+ 
+  }
+ 
+  h2 {
+    /*margin-left: 10%;
+    margin-bottom: 20px;*/
+ 
+    /*margin-left: 10%;*/
+    text-align: left;
+ 
+    font-size: 20px;
+    color: black;
+ 
+    border-bottom-width: 3px;
+    border-bottom-style: solid;
+    border-bottom-color: rgb(143, 143, 143);
+ 
+    /*width: 70%;*/
+ 
+  }
+ 
+  p {
+    margin-left: auto;
+    margin-right: auto;
+    /*width: 80%;*/
+ 
+    /*font-size: 18px;*/
+ 
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+ 
+ 
+  .img_fullPack {
+    padding: 10px;
+    margin: 10px;
+ 
+    border-width: 1px;
+    border-style: solid;
+  }
+ 
+  .img_top_under_Pack {
+    padding-top: 10px;
+    margin-top: 10px;
+ 
+    border-top-style: solid;
+    border-top-width: 1px;
+ 
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+ 
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+  }
+ 
+  .img_listing {
+    width: 40%;
+ 
+  }
+ 
+  .li_raretu {
+    margin-top: 10px;
+  }
+ 
+  .font_heavy {
+    font-weight: bolder;
+    /*font-size: larger;*/
+ 
+    margin-left: 5px;
+    margin-right: 5px;
+  }
+ 
+  .font_green {
+      /*color: green;*/
+    color: black;
+  }
+ 
+  .font_blue {
+      /*color: blue;*/
+    color: black;
+  }
+ 
+  .font_red {
+      /*color: red;*/
+    color: black;
+  }
+ 
+  .font_hide {
+      color: white;
+  }
+ 
+ 
+  .move_back {
+    margin-top: 100px;
+  }
+ 
+  .centered {
+    text-align: center;
+  }
+ 
+ 
+  .draw_circle {
+    position: absolute;
+ 
+    border-color: rgba(255, 51, 51, 0.8);
+    width: 20%;
+    height: 27%;
+    border-radius: 100%;
+    border-style: dashed;
+    border-width: 5px;
+  }
+ 
+  .circle_left {
+    left: 47.5%;
+ 
+  }
+ 
+  .circle_right {
+    left: 69%;
+  }
+ 
+  .circle_top {
+    top: 35%;
+   
+  }
+ 
+  .circle_bottom {
+    top: 62%;
+ 
+  }
+ 
+ 
+  .slider-holder {
+  padding: 15px;
+  margin: 10px;
+  margin-left: 100px;
+  margin-right: 30px;
+  }
+ 
+  .value1 {
+  font-size: 20px;
+  margin: 10px 0px 0px 30px;
+  display: inline-block;
+  }
+ 
+  .value2 {
+  font-size: 20px;
+  margin: 10px 0px 0px 30px;
+  display: inline-block;
+  }
+   
+  .steps {
+  border: 1px solid transparent;
+  width: 100%;
+  position: relative;
+  height: 45px;
+  }
+   
+  .tick_frame {
+  border: 1px solid transparant;
+  position: absolute;
+  width: 55px;
+  margin-left: -28px;
+  margin-bottom: 50px;
+  text-align: center;
+  left: 0;
+  }
+   
+  .number {
+  border: 1px solid;
+  font-size: 20px;
+  padding: 7px;
+  margin-left: -15px;
+  margin: 0;
+  }
+   
+  .player {
+  width: 60px;
+  border: 1px solid transparent;
+  font-size: 20px;
+  padding: 7px;
+  margin-left: -15px;
+  margin: 0;
+  }
+   
+  .tick {
+  border: 1px solid transparent;
+  margin: 0;
+  }
+ 
+ 
+  .slider-holder {  
+      padding: 15px;
+      margin: 10px;
+      margin-left: 100px;
+      margin-right: 30px;
+      }
+     
+      .steps {
+      border: 1px solid transparent;
+      width: 100%;
+      position: relative;
+      height: 45px;
+      }
+     
+      .tick_frame {
+      border: 1px solid transparant;
+      position: absolute;
+      width: 55px;
+      margin-left: -28px;
+      margin-bottom: 50px;
+      text-align: center;
+      left: 0;
+      }
+     
+      .number {
+      border: 1px solid;
+      font-size: 20px;
+      padding: 7px;
+      margin-left: -15px;
+      margin: 0;
+      }
+     
+      .player {
+      width: 80px;
+      padding: 0px;
+      border: 1px solid transparent;
+      font-size: 20px;
+      margin-left: 0px;
+      margin: 0;
+      text-align: left;
+      }
+     
+      .tick {
+      border: 1px solid transparent;
+      margin: 0;
+      }
+     
+      .progress_value .ui-progressbar-value{
+      background-color: #0091e4;
+      width: 50%;
+      }
+     
+      .num_frame {
+      position: absolute;
+      width: 20px;
+      }
+     
+      .num {
+      font-size: 10px;
+      }
+      .scale_num{
+      height:20px;
+      position: relative;
+      margin-right: 10px;
+      }
+ 
+      .progress_field{
+          margin-left: 115px;
+          margin-right: 17.5px;
+      }
+     
+      .value{
+      font-size: 20px;
+      margin-left: 15px;
+      }
+ 
+  progress{
+      width:100%;
+  }
+
+/*アニメーション*/
+
+
+/* 切り替え */
+
+.phase_layout { display: none; width: 100%; }
+
+/* 非表示にする */
+.unvisible {
+  opacity: 0.0;
+  pointer-events: none;
+}
+
+/* グレーアウトする */
+.grayout {
+  opacity: 0.2;
+}
+
+/* 操作不可能にする */
+.disable {
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* 消えていくアニメーション */
+@keyframes fadeoutAnimation {
+  0% {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+  80% {
+    opacity: 0.0;
+  }
+  100% {
+    opacity: 0.0;
+    pointer-events: none;
+    transform: translateY(100px);
+  }
+}
+
+.anim_fadeout {
+  animation: fadeoutAnimation 1s;  
+}
+
+/* 登場するアニメーション */
+@keyframes fadeinAnimation {
+  0% {
+      opacity: 0.0;
+      pointer-events: none;
+      transform: translateY(100px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+.anim_fadein {
+    animation: fadeinAnimation 1s;
+}
+
+/* 表示の時に、配置する位置 */
+.set_position {
+  top: 450px
+}
+
+/* 非表示の時に、配置するイチ */
+.out_position {
+  bottom: -100px;
+}
+
+/*ーーーーーーーーーーーーーーーーーーーーーーーーー*/
+
+/* 直線のスタイル */
+.line {
+    width: 80%;
+    height: 2px;
+    background-color: gray;
+    margin: 20px auto;
+    position: relative;
+}
+/* テキストのスタイル */
+.text {
+    position: absolute;
+    color: black;
+    font-size: 16px;
+}
+
+.start {
+    left: 0;
+    top: -20px;
+}
+
+.end {
+    right: 0;
+    bottom: -20px;
+}
+
+/* 大枠の長方形（container）のスタイル */
+.container{
+  width: min(800px, 100%) !important;
+  height: auto !important;        
+  min-height: 900px;              /* 必要なら残す（実験設計上） */
+  box-sizing: border-box;
+  margin: 0 auto;
+  position: relative;
+  border: 2px solid black;
+  padding-bottom: 24px;           /* 下に余白を足す */
+  overflow: visible;              /* 念のため */
+}
+
+/* 画面上部（Remote + Local 映像部分、相手・あなたの総合得点） */
+.top-area {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+
+  align-items: flex-end;
+  gap: 12px;
+}
+
+/* ミュートボタン */
+#mediaControls{
+  display: none;              /* ← 追加：通常は非表示 */
+}
+
+/* ---- choice のときだけ表示 ---- */
+#layout_choice.is_active #mediaControls{
+  display: flex;
+  position: absolute;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 30;
+
+  /* videoの右横に置く（video幅480pxの半分=240px） */
+  left: calc(50% + 240px + 12px);
+
+  /* 縦位置 */
+  top: 170px;
+}
+
+#mediaControls button{
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+#videoWrapper {
+  position: relative;
+  width: 480px;
+  height: 270px;
+  background: #000; /* 背景黒 */
+  margin: 0 auto;   /* 中央寄せ */
+}
+
+/* エリア共通設定 */
+.video-box-outer {
+  position: absolute;
+  overflow: hidden;
+  background: #000;
+}
+
+#remoteArea {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+#localArea {
+  bottom: 10px;
+  right: 10px;
+  width: 150px;
+  height: 90px;
+  z-index: 10; /* 相手の映像より手前に表示 */
+  border: 1px solid white;  /* 枠線 */
+}
+
+/* JS(Agora)で映像を流し込むターゲット要素
+   ※ここが 0px になっていると play() しても映らないので必ずサイズを与える */
+#remoteContainer,
+#localContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+/* Agora が内部で生成する video/canvas/player を枠にフィットさせる */
+#remoteContainer video,
+#remoteContainer canvas,
+#remoteContainer .agora_video_player,
+#localContainer video,
+#localContainer canvas,
+#localContainer .agora_video_player {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  z-index: 2;
+}
+
+/* 待機中ラベル（JS が innerHTML で入れる .label を表示） */
+#remoteContainer .label,
+#localContainer .label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  z-index: 1; /* 映像の下に置く */
+  pointer-events: none;
+}
+
+/* 念のため：中身の div の背景を黒に */
+#remoteContainer div,
+#localContainer div {
+  background-color: #000 !important;
+}
+
+/* 相手の総合得点*/
+.opp_total_score_texts {
+  position: absolute;
+  display: flex;
+  top: 215px;
+  left: 5px;
+}
+
+/* 相手の総合得点の日本語 */
+.opp_total_texts {
+  font-size: 14px;
+}
+
+/* 相手の総合得点の数値 */
+#opp_total_score {
+  font-size: 18px;
+}
+
+/* あなたの総合得点*/
+.you_total_score_texts {
+  position: absolute;
+  display: flex;
+  top: 245px;
+  left: 5px;
+}
+
+/* あなたの総合得点の日本語 */
+.you_total_texts {
+  font-size: 14px;
+  position: relative;
+}
+
+/* あなたの総合得点の数値 */
+#you_total_score {
+  font-size: 18px;
+  position: relative;
+}
+
+
+
+/* 画面下部（左：マトリクス他、右：心的状況スライダー） */
+.bottom-area {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.bottom-inner {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* 左カラム（ラウンド・名前・マトリクス・テキスト・ボタン類・予測スライダー） */
+.left-column {
+  position: relative;
+  flex: 9 1 0; 
+  min-width: 0;
+  display: flex;  
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ラウンドの表記 */
+.round_texts {
+  position: absolute;
+  top: 5px;
+  left: 2%;
+}
+
+/* ラウンドの回目のやつ */
+.round_th {
+  font-size: 20px;
+  position: relative;
+  top: 35px;
+  left: 60px;
+}
+
+/* ラウンドの数値 */
+#round_N {
+  font-size: 50px;
+  font-family: fantasy;
+  text-align: right;
+  position: relative;
+  top: -20px;
+}
+
+/* テキスト"相手"の位置 */
+.text_opp_name {
+  position: absolute;
+  font-size: 25px;
+  top: 180px;
+  left: 15px;
+}
+
+/* 相手の選択肢のテキスト */
+.text_choice_opp {
+    position: absolute;
+    font-size: 27px;
+    color: #696969;
+    top: 130px;
+    left: 90px;
+}
+
+.text_green_choice_opp {
+    position: absolute;
+}
+
+.text_blue_choice_opp {
+    position: absolute;
+    top: 100px;
+    left: 0px;
+}
+
+/* テキスト"あなた"の位置 */
+.text_you_name {
+  position: absolute;
+  font-size: 25px;
+  left: 240px;
+  top: 10px;
+}
+
+/* あなたの選択肢のテキスト */
+.text_choice_you {
+  position: absolute;
+  font-size: 27px;
+  color: #696969;
+  top: 50px;
+  left: 200px;
+}
+
+.text_green_choice_you {
+  position: absolute;
+}
+
+.text_blue_choice_you {
+  position: absolute;
+  top: 0px;
+  left: 130px;
+}
+
+/* 300×200 のマトリックス枠（親） */
+.matrix_area {
+  width: 300px;
+  height: 200px;
+  position: absolute;
+  top: 100px;
+  left: 130px;
+}
+
+/* マトリックスセル */
+.matrix_cell {
+  width: 135px;
+  height: 85px;
+  background-color: gray;
+  border-radius: 12px;
+
+  color: white;
+  font-family: Arial Black, fantasy, Gadget, sans-serif;
+
+  position: absolute;
+  box-sizing: border-box;
+  transition: opacity 150ms ease, filter 150ms ease;
+}
+
+/* 選ばれていないセルを薄くする */
+.matrix_dim{
+  opacity: 0.22;          /* 好みで 0.15〜0.35 くらいで調整 */
+  filter: grayscale(0.2); /* 任意：少しだけ落ち着かせる */
+}
+
+/* 選ばれたセル（結果セル）は通常表示に戻す（明示用） */
+.matrix_active{
+  opacity: 1;
+  filter: none;
+}
+
+/* 2×2 配置（余白10px） */
+#cell_CC { left: 10px;  top: 10px;  }
+#cell_DC { left: 150px; top: 10px;  }
+#cell_CD { left: 10px;  top: 105px; }
+#cell_DD { left: 150px; top: 105px; }
+
+/* ラベル（あなた / 相手） */
+.cell_text_you,
+.cell_text_opp {
+  position: absolute;
+  left: 8px;
+  font-size: 12px; 
+  /* ↑1500,2000ver */
+}
+
+.cell_text_you { top: 10px; }
+.cell_text_opp { bottom: 10px; }
+
+/* スコア表示 */
+.score_text_you,
+.score_text_opp {
+  position: absolute;
+  right: 12px;
+  font-size: 24px;
+  /* ↑4桁ver */
+}
+
+.score_text_you { top: 8px; }
+.score_text_opp { bottom: 8px; }
+
+/* あなたの選択箱 */
+.rectangle_side {
+    height: 245px; 
+    width: 140px; 
+    border: 5px solid rgb(30, 0, 255); 
+    position: absolute;
+    left: 276px; 
+    top: 50px;
+}
+
+/* 2つ目の長方形の配置 */
+#rectangle_you_green {
+    left: 137px; /* 1つ目の長方形の左側に配置 */
+    border: 5px solid rgb(20, 250, 0); 
+}
+
+/* 相手の選択箱 */
+.rectangle_uesita {
+    height: 95px; 
+    width: 335px; 
+    border: 5px solid rgb(20, 250, 0); 
+    position: absolute;
+    left: 84px; 
+    top: 105px;
+}
+
+/* 2つ目の長方形の配置 */
+#rectangle_opp_blue {
+    top: 200px;
+    border: 5px solid rgb(30, 0, 255); 
+}
+
+/* 「TextBox」のスタイル */
+/* 参加者に読んでもらうテキストボックス */
+.TextBox {
+    width: 440px;
+    max-width: calc(100% - 24px);
+    min-height: 88px;
+    height: auto;
+
+    background-color: rgba(8, 8, 8, 0.126);
+    border: 4px solid #696969;
+    border-radius: 10px;
+    display: flex;
+    /* justify-content: center; */
+    /* align-items: center; */
+    margin-bottom: 20px;
+
+    position: absolute;
+    top: 330px;
+    left: 10px;
+
+    font-size: 15px;
+
+    /* テキストが越えた場合 */
+    word-break: break-all;
+
+    /* テキストの位置 */
+    padding-left: 10px;
+    padding-right: 10px;
+
+}
+
+/* 選択ボタンのコンテナのスタイル */
+#choice_button_container {
+    position: absolute;
+    left: 137px;
+}
+
+/* ボタンのスタイル */
+/* 全てのボタンは形状を統一する */
+#green_button, #blue_button, #next_button, #mic_button, #cam_button {
+    padding: 10px 50px;
+    font-size: 27px;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    border-radius: 40px;
+    background-color: black;
+    color: white;
+    margin: 0 5px;
+
+    position: relative;
+}
+
+/* ボタンをマウスオーバーしたときの挙動 */
+#green_button:hover, #blue_button:hover, #next_button:hover {
+  transform: scale(1.2);
+}
+
+/* 次へボタンは、色のみ変える */
+#next_button {
+    position: absolute;
+    padding: 10px 30px;
+    font-size: 25px;
+    background-color: white;
+    border: 4px solid black;
+    color: black;
+    margin: 0 20px;
+
+    top: 530px;
+    left: 280px;
+}
+
+/* ミュートボタンは小さく */
+#mic_button, #cam_button{
+  padding: 8px 14px;
+  font-size: 14px;
+  background-color: white;
+  border: 1px solid black;
+  color: black;
+}
+
+/* コンテナ：スライダー(300px)を基準に上下に配置 */
+.pred_slider_container{
+  width: 400px;
+  position: absolute;
+  left: 30px;
+
+  display: grid;
+  grid-template-columns: 1fr 300px 1fr; /* 中央がスライダー幅 */
+  grid-template-rows: auto auto auto auto;   /*　左ラベル　/ 上(数値) / 中(スライダー) / 下(ラベル) */
+  row-gap: 6px;
+  align-items: center;
+}
+
+.pred_title{
+  grid-column: 1 / 4;   /* 全幅 */
+  grid-row: 1;
+  justify-self: start;
+  font-size: 14px;
+  font-weight: 600;
+  margin-left: 0;
+}
+
+/* スライダー本体（中央） */
+#pred_slider{
+  grid-column: 2;
+  grid-row: 2;
+  width: 300px;
+
+  -webkit-appearance:none;
+  appearance:none;
+  height:5px;
+  background:#ddd;
+  border-radius:10px;
+  outline:none;
+}
+
+/* つまみ */
+#pred_slider::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:#4b4b4b;
+}
+#pred_slider::-moz-range-thumb{
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:#212121;
+  border:none;
+}
+
+/* 左右ブロックの“箱”を消して、中身(p)を直接grid配置できるようにする */
+.slider_textAndvalue_left,
+.slider_textAndvalue_right{
+  display: contents;
+}
+
+/* 上：数値（スライダーの左右端に合わせる） */
+.slider_textAndvalue_left  .slider_value{
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: start;
+  margin: 0;
+}
+.slider_textAndvalue_right .slider_value{
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  margin: 0;
+}
+
+#pred_slider{ grid-row: 3; }
+
+/* 下：テキストラベル（スライダーの左右端に合わせる） */
+.slider_textAndvalue_left  .slider_text{
+  grid-column: 2;
+  grid-row: 4;
+  justify-self: start;
+  margin: 0;
+  font-size: 14px;
+}
+.slider_textAndvalue_right .slider_text{
+  grid-column: 2;
+  grid-row: 4;
+  justify-self: end;
+  margin: 0;
+  font-size: 14px;
+}
+/* 中央の 0：スライダーの“上”の中央 */
+.slider_center_mark{
+  grid-column: 2;
+  grid-row: 2;            /* ← 上段（数値の段）へ */
+  justify-self: center;
+  align-self: center;
+  margin: 0;
+  transform: none;        /* ← 下にずらすのをやめる */
+  position: static;
+}
+
+
+/* 右カラム（心的状況スライダーセット） */
+.right-column{
+  position: relative;
+  flex: 7 1 0;
+  min-width: 0;
+  display: flex;            
+  justify-content: center;
+}
+
+.mental_sliders {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: absolute;
+  gap: 16px;
+  top: 10px;
+}
+
+/* コンテナ：スライダー(250px)を基準に上下に配置 */
+.mental_slider_container{
+  width: 300px;
+
+  display: grid;
+  grid-template-columns: 1fr 250px 1fr; /* 中央がスライダー幅 */
+  grid-template-rows: auto auto auto;   /* 上(数値) / 中(スライダー) / 下(ラベル) */
+  row-gap: 6px;
+  align-items: center;
+}
+
+/* スライダー本体（中央） */
+.mental_slider{
+  grid-column: 2;
+  grid-row: 2;
+  width: 250px;
+
+  -webkit-appearance:none;
+  appearance:none;
+  height:5px;
+  background:#ddd;
+  border-radius:10px;
+  outline:none;
+}
+
+/* 左右ブロックの箱を消して p をgrid item化 */
+.mental_slider_textAndvalue_left,
+.mental_slider_textAndvalue_right{
+  display: contents;
+}
+
+/* 上：数値 */
+.mental_slider_textAndvalue_left  .slider_value{
+  grid-column: 2; grid-row: 1;
+  justify-self: start; margin: 0;
+}
+.mental_slider_textAndvalue_right .slider_value{
+  grid-column: 2; grid-row: 1;
+  justify-self: end; margin: 0;
+}
+
+/* 下：ラベル */
+.mental_slider_textAndvalue_left  .mental_slider_text{
+  grid-column: 2; grid-row: 3;
+  justify-self: start; margin: 0;
+  font-size: 11px;
+  line-height: 1.25;
+  transform: translateX(-40px);
+}
+.mental_slider_textAndvalue_right .mental_slider_text{
+  grid-column: 2; grid-row: 3;
+  justify-self: end; margin: 0;
+  font-size: 11px;
+  line-height: 1.25;
+  transform: translateX(40px);
+}
+
+/* layout配下では absolute 座標をいったん無効化して、縦に積める状態にする */
+.phase_layout.is_active{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ブロック自体の幅 */
+#block_video, #block_matrix, #block_chat, #block_emo, #block_pred, #block_choice, #block_next{
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* 旧レイアウトの absolute を layout内では解除 */
+.phase_layout .TextBox,
+.phase_layout #choice_button_container,
+.phase_layout .pred_slider_container,
+.phase_layout #next_button,
+.phase_layout .mental_sliders{
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  bottom: auto !important;
+  right: auto !important;
+}
+
+/* 利得表の位置 */
+#layout_emopred #block_matrix{ margin-top: 10px; }
+#layout_choice  #block_matrix{ margin-top: 20px; }
+
+/* 共通：ブロック幅（必要なら数値調整） */
+#layout_emopred #block_matrix,
+#layout_emopred #block_chat,
+#layout_emopred #block_emo,
+#layout_emopred #block_next,
+#layout_choice  #block_video,
+#layout_choice  #block_matrix,
+#layout_choice  #block_chat,
+#layout_choice  #block_choice,
+#layout_choice  #block_next{
+  width: 100%;
+  display:flex;
+  justify-content:center;
+}
+
+/* 感情ブロックを中央に置きつつ横幅は使う */
+.mental_sliders{ width: 100%; } 
+
+/* 利得表セットの当たり判定（青枠セットを丸ごと移動できる） */
+.matrix_set{
+  position: relative;   /* ここが absolute の基準 */
+  width: 450px;         /* 好みで調整 */
+  height: 330px;        /* 好みで調整 */
+}
+
+/* 感情（mental_sliders）内の最後にある予測を少し離す */
+#layout_emopred #pred_slider_container{
+  margin-top: 18px;
+}
+
+/* emopred：利得表→テキスト→感情→次へ */
+#layout_emopred #block_matrix { order: 1; }
+#layout_emopred #block_chat   { order: 2; }
+#layout_emopred #block_emo    { order: 3; }
+#layout_emopred #block_next   { order: 4; }
+
+/* choice：映像→利得表→テキスト→選択→次へ */
+#layout_choice  #block_video  { order: 1; }
+#layout_choice  #block_matrix { order: 2; }
+#layout_choice  #block_chat   { order: 3; }
+#layout_choice  #block_choice { order: 4; }
+#layout_choice  #block_next   { order: 5; }
+
+/* ===== 新UI：感情スライダー ===== */
+
+#mental_slider_container{
+  width: min(540px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mental_sliders{
+  align-items: stretch;   /* center → stretch */
+}
+
+:root{
+  --emo-label-w: 300px;
+}
+
+/* ===== 感情の尺度（文言行 + 数字行） ===== */
+.mental_scale_header{
+  display: grid;
+  grid-template-columns: var(--emo-label-w) 1fr; /* 左:ラベル列 / 右:スライダー列 */
+  grid-template-rows: auto auto;                 /* 1行目:文言 / 2行目:数字 */
+  row-gap: 2px;
+  align-items: end;
+  margin-bottom: 2px;
+}
+
+/* 文言（スライダー列の上） */
+.scale_track_text{
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  font-size: 11px;
+  line-height: 1.1;
+}
+.scale_track_text span:nth-child(1){ justify-self: start; }
+.scale_track_text span:nth-child(2){ justify-self: center; }
+.scale_track_text span:nth-child(3){ justify-self: end; }
+
+/* 数字（スライダー列の上：0/50/100を両端・中央に固定） */
+.mental_scale_header .scale_track{
+  grid-column: 2;
+  grid-row: 2;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.mental_scale_header .m_scale_value,
+.mental_scale_header .m_scale_center{
+  font-size: 12px;
+  margin: 0;
+  line-height: 1.1;
+}
+.mental_scale_header .m_scale_value:first-child{ justify-self: start; }
+.mental_scale_header .m_scale_center{ justify-self: center; }
+.mental_scale_header .m_scale_value:last-child{ justify-self: end; }
+
+.mental_row{
+  display: grid;
+  grid-template-columns: var(--emo-label-w) 1fr;
+  column-gap: 18px;
+  min-height: 32px;
+  margin: 0;
+}
+
+.mental_row_label{
+  font-size: 15px;
+  text-align: center;
+  white-space: nowrap;
+
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+.mental_slider_wrap{
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.mental_row .mental_slider{
+  width: 100%;
+  display: block;
+  margin: 0;
+}
+
+/* 各行のスライダー列に 0/50/100 の縦線を“突き抜け”で表示 */
+.mental_row{
+  position: relative;
+}
+
+.mental_row input.mental_slider{
+  background: #ddd;
+  border-radius: 10px;
+}
+
+/* ===== 感情スライダーを pred と同じ見た目に ===== */
+.mental_row input.mental_slider{
+  -webkit-appearance: none;
+  appearance: none;
+  height: 5px;
+  background: #ddd;
+  border-radius: 10px;
+  outline: none;
+}
+
+/* つまみ（Webkit） */
+.mental_row input.mental_slider::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #4b4b4b; /* predと同じ色 */
+}
+
+/* つまみ（Firefox） */
+.mental_row input.mental_slider::-moz-range-thumb{
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #212121;
+  border: none;
+}
+
+/* 予測：ラベル(左) + 予測UI(右) */
+.pred_row_wrap{
+  width: min(540px, 100%);
+  margin: 10px auto 0;
+}
+
+.phase_layout #pred_slider_container{
+  position: static !important;
+  width: 100% !important;
+
+  display: grid;
+  grid-template-columns: 1fr minmax(260px, 1fr) 1fr;
+  grid-template-rows: auto auto auto; /* 1:ラベル 2:数値 3:スライダー 4:下ラベル を作るなら4行に */
+  row-gap: 4px;
+  align-items: center;
+}
+
+/* ラベル（上段） */
+.phase_layout #pred_slider_container .pred_row_label{
+  grid-column: 1 / 4;
+  grid-row: 1;
+  justify-self: start;
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 2px 0;
+}
+
+#block_score{
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  z-index: 40; /* videoより前でも後でもOK。数字見えればOK */
+}
+
+
+
+/* =========================
+   マッチング待機中の見た目（ゲーム開始前だけ）
+   ========================= */
+
+/* TextBoxを最前面＆上に固定して読みやすく */
+.container.pre_match #block_chat{
+  position: absolute;
+  top: 12px;
+  
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, calc(100% - 20px));
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+}
+
+/* TextBox自体は “中身” はstaticにしてサイズを素直に */
+.container.pre_match .TextBox{
+  position: static !important;
+  width: 100%;
+  height: auto;
+  min-height: 70px;
+
+  background: rgba(255,255,255,0.92);
+  border-color: #333;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+/* ===== 緊急離脱ボタン：常に表示（画面固定） ===== */
+#emergency_exit_layer{
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+  z-index: 10000; /* 何より前に出す */
+}
+
+/* ボタン本体 */
+#exit_button{
+  padding: 10px 14px;
+  font-size: 14px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid #000;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 反応（任意） */
+#exit_button:hover{ transform: scale(1.03); }
+#exit_button:active{ transform: scale(0.98); }
+#exit_button:disabled{ opacity: 0.6; cursor: not-allowed; }
+
+
+#next_button.soft_disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* まだ触っていない感情スライダーだけ少し薄くする */
+.mental_row .mental_slider.is-untouched{
+  opacity: 0.45;
+}
+
+/* Firefox系でつまみも少し見え方を弱めたい場合の保険 */
+.mental_row .mental_slider.is-untouched::-moz-range-thumb{
+  opacity: 0.7;
+}

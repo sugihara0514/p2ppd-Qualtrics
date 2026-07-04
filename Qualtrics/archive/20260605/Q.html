@@ -1,0 +1,245 @@
+<style>
+</style>
+
+<div class="line">
+  <span class="text start">START</span>
+</div>
+
+<!-- 追加：常設の緊急離脱ボタン（レイアウトに依存しない） -->
+<div id="emergency_exit_layer">
+  <button id="rematch_button" type="button" aria-label="再マッチ" style="display:none;" disabled>🔄 再マッチ</button>
+  <button id="exit_button" type="button" aria-label="緊急離脱">🚪 緊急離脱</button>
+</div>
+
+<div class="container">
+
+  <!-- 感情/予測フェーズ用 -->
+  <div id="layout_emopred" class="phase_layout is_active"></div>
+
+  <!-- 選択フェーズ用 -->
+  <div id="layout_choice" class="phase_layout"></div>
+
+  <!-- スコアブロック -->
+  <div id="block_score">    
+    <div class="opp_total_score_texts">
+      <span class="opp_total_texts">　相手の得点：</span>
+      <div id="opp_total_score">0</div>
+    </div>
+
+    <div class="you_total_score_texts">
+      <span class="you_total_texts">あなたの得点：</span>
+      <div id="you_total_score">0</div>
+    </div>
+  </div>
+
+  <!-- ===== 移動させるブロック群 ===== -->
+
+  <!-- 映像ブロック -->
+  <div id="block_video">
+    <div class="top-area">
+      <div id="videoWrapper">
+        <div class="video-box-outer" id="remoteArea">
+          <div id="remoteContainer"><span class="label">Remote</span></div>
+        </div>
+        <div class="video-box-outer" id="localArea">
+          <div id="localContainer"><span class="label">Local</span></div>
+        </div>
+      </div>
+
+      <div id="mediaControls">
+        <button id="mic_button" type="button" aria-pressed="false">🎤 Mic ON</button>
+        <button id="cam_button" type="button" aria-pressed="false">📷 Cam ON</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 利得表ブロック -->
+  <div id="block_matrix">
+    <div id="matrix_set" class="matrix_set">
+
+      <div class="round_texts">
+        <span class="round_th">回目</span>
+        <div id="round_N">1</div>
+      </div>
+
+      <div class="text_opp_name">相手</div>
+      <div class="text_you_name">あなた</div>
+
+      <div class="text_choice_opp">
+        <div class="text_green_choice_opp">緑</div>
+        <div class="text_blue_choice_opp">青</div>
+      </div>
+
+      <div class="text_choice_you">
+        <div class="text_green_choice_you">緑</div>
+        <div class="text_blue_choice_you">青</div>
+      </div>
+
+      <div class="matrix_area">
+        <div class="matrix_cell" id="cell_CC">
+          <span class="cell_text_you">あなた：</span>
+          <span class="cell_text_opp">相手：</span>
+          <div class="score_text_you score_you" id="you_CC">2</div>
+          <div class="score_text_opp score_opp" id="opp_CC">2</div>
+        </div>
+        <div class="matrix_cell" id="cell_CD">
+          <span class="cell_text_you">あなた：</span>
+          <span class="cell_text_opp">相手：</span>
+          <div class="score_text_you score_you" id="you_CD">0</div>
+          <div class="score_text_opp score_opp" id="opp_CD">3</div>
+        </div>
+        <div class="matrix_cell" id="cell_DC">
+          <span class="cell_text_you">あなた：</span>
+          <span class="cell_text_opp">相手：</span>
+          <div class="score_text_you score_you" id="you_DC">3</div>
+          <div class="score_text_opp score_opp" id="opp_DC">0</div>
+        </div>
+        <div class="matrix_cell" id="cell_DD">
+          <span class="cell_text_you">あなた：</span>
+          <span class="cell_text_opp">相手：</span>
+          <div class="score_text_you score_you" id="you_DD">1</div>
+          <div class="score_text_opp score_opp" id="opp_DD">1</div>
+        </div>
+      </div>
+
+      <div class="rectangle_side unvisible" id="rectangle_you_blue"></div>
+      <div class="rectangle_side unvisible" id="rectangle_you_green"></div>
+      <div class="rectangle_uesita unvisible" id="rectangle_opp_green"></div>
+      <div class="rectangle_uesita unvisible" id="rectangle_opp_blue"></div>
+
+    </div>
+  </div>
+
+  <!-- チャット/テキスト -->
+  <div id="block_chat">
+    <div class="TextBox" id="dynamicText">ゲームを開始する準備をしています。。。</div>
+  </div>
+
+  <!-- 選択ボタン -->
+  <div id="block_choice">
+    <div class="unvisible disable" id="choice_button_container">
+      <button id="green_button">緑</button>
+      <button id="blue_button">青</button>
+    </div>
+  </div>  
+
+  <!-- 次へ -->
+  <div id="block_next">
+    <button class="unvisible disable" id="next_button">次へ</button>
+  </div>
+
+  <!-- 感情スライダー 末尾に予測スライダー追加　-->
+  <div id="block_emo">
+    <div class="mental_sliders grayout" id="mental_slider_container">
+
+      <div class="mental_scale_header">
+        <div class="scale_spacer"></div>
+
+        <div class="scale_track_text">
+          <span>全く思わない</span>
+          <span>どちらでもない</span>
+          <span>強くそう思う</span>
+        </div>
+
+        <div class="scale_spacer"></div>
+
+        <div class="scale_track">
+          <p class="m_scale_value">0</p>
+          <p class="m_scale_center">50</p>
+          <p class="m_scale_value">100</p>
+        </div>
+      </div>
+
+      <div class="mental_row" id="emo1_slider_container">
+        <div class="mental_row_label">次のラウンドでは、緑を選択したい</div>
+        <div class="mental_slider_wrap">
+          <input type="range" class="mental_slider" id="emo1_slider" min="0" max="100" step="1" value="50">
+        </div>
+      </div>
+
+      <div class="mental_row" id="emo2_slider_container">
+        <div class="mental_row_label">相手は次のラウンドで緑を選択する</div>
+        <div class="mental_slider_wrap">
+          <input type="range" class="mental_slider" id="emo2_slider" min="0" max="100" step="1" value="50">
+        </div>
+      </div>
+
+      <div class="mental_row" id="emo3_slider_container">
+        <div class="mental_row_label">今の気分は快い</div>
+        <div class="mental_slider_wrap">
+          <input type="range" class="mental_slider" id="emo3_slider" min="0" max="100" step="1" value="50">
+        </div>
+      </div>
+
+      <div class="mental_row" id="emo4_slider_container">
+        <div class="mental_row_label">今の気分は興奮している</div>
+        <div class="mental_slider_wrap">
+          <input type="range" class="mental_slider" id="emo4_slider" min="0" max="100" step="1" value="50">
+        </div>
+      </div>
+
+      <div class="mental_row" id="emo5_slider_container">
+        <div class="mental_row_label">今、相手を信頼している</div>
+        <div class="mental_slider_wrap">
+          <input type="range" class="mental_slider" id="emo5_slider" min="0" max="100" step="1" value="50">
+        </div>
+      </div>
+
+      <div class="mental_row" id="emo6_slider_container">
+        <div class="mental_row_label">相手の選択に苛立ちや怒りを感じている</div>
+        <div class="mental_slider_wrap">
+          <input type="range" class="mental_slider" id="emo6_slider" min="0" max="100" step="1" value="50">
+        </div>
+      </div>
+
+      <div class="mental_row" id="emo7_slider_container">
+        <div class="mental_row_label">相手に裏切られる不安や緊張を感じている</div>
+        <div class="mental_slider_wrap">
+          <input type="range" class="mental_slider" id="emo7_slider" min="0" max="100" step="1" value="50">
+        </div>
+      </div>
+
+      <div class="mental_row" id="emo8_slider_container">
+        <div class="mental_row_label">この選択は、自分で決めていると感じる</div>
+        <div class="mental_slider_wrap">
+          <input type="range" class="mental_slider" id="emo8_slider" min="0" max="100" step="1" value="50">
+        </div>
+      </div>
+
+      <div class="mental_row" id="emo9_slider_container">
+        <div class="mental_row_label">この選択の決定は精神的に負担が大きい</div>
+        <div class="mental_slider_wrap">
+          <input type="range" class="mental_slider" id="emo9_slider" min="0" max="100" step="1" value="50">
+        </div>
+      </div>
+
+      <div class="mental_row" id="emo10_slider_container">
+        <div class="mental_row_label">この選択に迷いはない</div>
+        <div class="mental_slider_wrap">
+          <input type="range" class="mental_slider" id="emo10_slider" min="0" max="100" step="1" value="50">
+        </div>
+      </div>
+
+      <!-- 予測スライダー -->
+      <!-- <div class="pred_row_wrap">
+
+        <div class="pred_slider_container unvisible disable" id="pred_slider_container">
+          <div class="pred_row_label">次の相手の選択予測</div>
+
+          <div class="slider_textAndvalue_left">
+              <p class="slider_value">-50</p>
+              <p class="slider_text">相手は緑を選ぶ</p>
+          </div>
+          <input type="range" id="pred_slider" min="-50" max="50" step="1" value="0">
+          
+          <div class="slider_textAndvalue_right">
+              <p class="slider_value">50</p>
+              <p class="slider_text">相手は青を選ぶ</p>
+          </div>
+          <p class="slider_center_mark">0</p>
+        </div>
+      </div> -->
+    </div>
+  </div>
+</div>

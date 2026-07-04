@@ -213,7 +213,7 @@ export function startGame(channel, rtc, opts = {}) {
   });
 
   // ラウンド数
-  const MAX_ROUNDS = 3;
+  const MAX_ROUNDS = 5;
   const round_N = document.getElementById("round_N");
 
   function renderRound() {
@@ -226,8 +226,10 @@ export function startGame(channel, rtc, opts = {}) {
   // 追加コメント
   const ROUND_CHOICE_COMMENTS = {
     1: "練習1回目です。\n操作に慣れながら、相手と相談してみてください。",
-    2: "練習2回目です。\n本番を意識してプレイしてみてください。",
-    3: "本番です。\nこのラウンドの結果に応じて報酬が決まります。",
+    2: "練習2回目です。\nテキスト2",
+    3: "練習3回目です。\nテキスト3",
+    4: "練習4回目です。\nテキスト4",
+    5: "本番です。\nこのラウンドの結果に応じて報酬が決まります。",
   };
 
   function getRoundChoiceComment(round) {
@@ -622,6 +624,66 @@ export function startGame(channel, rtc, opts = {}) {
     }
   }
 
+  function setCurrentPhase(phase) {
+    window.__PD_CURRENT_PHASE__ = String(phase || "");
+    qSet("pd_current_phase", window.__PD_CURRENT_PHASE__);
+  }
+
+  function setCurrentRoom(room) {
+    window.__PD_CURRENT_ROOM__ = String(room || "");
+    qSet("pd_current_room", window.__PD_CURRENT_ROOM__);
+  }
+
+  function qSetCurrentRoomSnapshot(s) {
+    if (!s) return;
+    if (s.seat) {
+      window.__PD_CURRENT_SEAT__ = String(s.seat);
+      qSet("pd_current_video_side", String(s.seat));
+    }
+    if (s.seats?.left) {
+      window.__PD_CURRENT_LEFT_PID__ = String(s.seats.left);
+      qSet("pd_current_room_left_pid", String(s.seats.left));
+    }
+    if (s.seats?.right) {
+      window.__PD_CURRENT_RIGHT_PID__ = String(s.seats.right);
+      qSet("pd_current_room_right_pid", String(s.seats.right));
+    }
+    if (s.recordingStatus) {
+      window.__PD_RECORDING_STATUS__ = String(s.recordingStatus);
+      qSet("pd_recording_status", String(s.recordingStatus));
+    }
+    if (s.recordingEverStarted != null) qSet("pd_recording_ever_started", s.recordingEverStarted ? "1" : "0");
+    if (s.recordingSid) qSet("pd_recording_sid", String(s.recordingSid));
+    if (s.recordingStoragePrefix) qSet("pd_recording_storage_prefix", String(s.recordingStoragePrefix));
+    if (s.recordingState) qSet("pd_recording_state_json", s.recordingState);
+  }
+
+  function qSetFinalRoomSnapshot(s) {
+    qSet("pd_room", String(channel));
+    qSet("pd_final_room", String(channel));
+    if (s?.seat) qSet("pd_video_side", String(s.seat));
+    if (s?.seats?.left) qSet("pd_room_left_pid", String(s.seats.left));
+    if (s?.seats?.right) qSet("pd_room_right_pid", String(s.seats.right));
+    if (s?.recordingStatus) qSet("pd_final_recording_status", String(s.recordingStatus));
+    if (s?.recordingSid) qSet("pd_final_recording_sid", String(s.recordingSid));
+    if (s?.recordingStoragePrefix) qSet("pd_final_recording_storage_prefix", String(s.recordingStoragePrefix));
+  }
+
+  function releaseSurveyAsIncomplete(reason, s = null) {
+    qSet("pd_incomplete", "1");
+    qSet("pd_end_reason", reason);
+    qSet("pd_abort_reason", reason);
+    qSet("pd_abort_at", Date.now());
+    qSet("pd_abort_room", String(channel));
+    setCurrentPhase("incomplete_released");
+    qSet("pd_room_status", "incomplete");
+    qSetCurrentRoomSnapshot(s);
+
+    window.__PD_GAME_OVER__ = true;
+    window.__PD_SURVEY_READY__ = true;
+    window.__PD_REMATCHING__ = false;
+  }
+
   if (window.Qualtrics && Qualtrics.SurveyEngine) {
     qSet("pd_player_id", String(pid));
   }
@@ -733,8 +795,11 @@ export function startGame(channel, rtc, opts = {}) {
     setStatus(message, { typewriter: false, force: true });
   }
 
-  // 録画ファイル名にも使われるroom名（channel）を保存
-  qSet("pd_room", String(channel));
+  // 途中離脱や録画開始失敗と正式完了roomを区別する。
+  setCurrentRoom(channel);
+  qSet("pd_current_room_assigned_at", Date.now());
+  qSet("pd_room_status", "assigned");
+  setCurrentPhase("game_joining");
 
   let currentRound = 1;
   let emotionForRound = null; // 「感情（＋次回予測）」が対応するラウンド
@@ -777,22 +842,26 @@ export function startGame(channel, rtc, opts = {}) {
     currentRound = init.round || 1;
     renderRound();
 
-    if (init.seat) qSet("pd_video_side", String(init.seat));
-    if (init.seats?.left) qSet("pd_room_left_pid", String(init.seats.left));
-    if (init.seats?.right) qSet("pd_room_right_pid", String(init.seats.right));
+    qSetCurrentRoomSnapshot(init);
+    qSet("pd_game_joined", "1");
+    qSet("pd_game_joined_at", Date.now());
 
     setButtonsEnabled(false);
     canChoose = false;
     syncNextButtonVisualState();
 
     if (!init.baselineDone) {
+      setCurrentPhase("baseline_emotion");
       showBaselineEmotionUI();
       return;
     }
 
+    setCurrentPhase("polling");
     startPolling();    
   }).catch(err => {
     console.error("game/join failed", err);
+    qSet("pd_game_join_error", err?.message || String(err));
+    qSet("pd_game_join_error_at", Date.now());
     setStatus("ゲーム初期化に失敗しました。接続状態を確認してください。", { typewriter:false, force:true });
   });
 
@@ -944,6 +1013,9 @@ export function startGame(channel, rtc, opts = {}) {
 
     if (resp.status === 409) {
       console.warn("choice conflict", data || text);
+      qSet("pd_choice_error", "conflict");
+      qSet("pd_choice_error_detail", data || text || "");
+      qSet("pd_choice_error_at", Date.now());
       currentRound = data?.serverRound || currentRound;
       renderRound();
       hasChosenThisRound = false;
@@ -955,6 +1027,9 @@ export function startGame(channel, rtc, opts = {}) {
 
     if (!resp.ok) {
       console.error("choice HTTP error", resp.status, data || text);
+      qSet("pd_choice_error", `http_${resp.status}`);
+      qSet("pd_choice_error_detail", data || text || "");
+      qSet("pd_choice_error_at", Date.now());
       setStatus(`送信エラー(${resp.status}). ページ再読み込みしてください。`, { typewriter:false, force:true });
       return;
     }
@@ -969,9 +1044,7 @@ export function startGame(channel, rtc, opts = {}) {
         const s = await r.json();
         if (!s.exists) return;
 
-        if (s.seat) qSet("pd_video_side", String(s.seat));
-        if (s.seats?.left) qSet("pd_room_left_pid", String(s.seats.left));
-        if (s.seats?.right) qSet("pd_room_right_pid", String(s.seats.right));
+        qSetCurrentRoomSnapshot(s);
 
                 // 終了
         if (s.over) {
@@ -992,6 +1065,10 @@ export function startGame(channel, rtc, opts = {}) {
           // 正式終了だけアンケートへ進める
           if (reason === "game_finished" || reason === "player_left") {
             hideRematchButton();
+            qSetFinalRoomSnapshot(s);
+            qSet("pd_incomplete", "0");
+            qSet("pd_room_status", "finished");
+            setCurrentPhase("finished");
 
             if (reason === "player_left") {
               setStatus("相手が離脱したためゲームを終了します。「→」で次へ進んでください。", {
@@ -1018,12 +1095,9 @@ export function startGame(channel, rtc, opts = {}) {
 
           // 再マッチ対象の終了は、次へを出さない
           if (reason === "opponent_disconnected") {
-            window.__PD_GAME_OVER__ = false;
-            window.__PD_SURVEY_READY__ = false;
-            window.__PD_REMATCHING__ = false;
-
-            showRematchButton();
-            setStatus("相手との接続が切れました。再マッチする場合は「🔄 再マッチ」を押してください。", {
+            hideRematchButton();
+            releaseSurveyAsIncomplete(reason, s);
+            setStatus("相手との接続が切れたため、このゲームは中断として記録します。「→」ボタンで次へ進んでください。", {
               typewriter: false,
               force: true,
             });
@@ -1060,10 +1134,14 @@ export function startGame(channel, rtc, opts = {}) {
           hideBase(nextButton);
 
           if (s.rematchEligible) {
-            showRematchButton();
-            setStatus("相手の再接続が一定時間確認できなかったため、再マッチできます。", { typewriter:false, force:true });
+            hideRematchButton();
+            releaseSurveyAsIncomplete("opponent_disconnected", s);
+            setStatus("相手の再接続が一定時間確認できなかったため、このゲームは中断として記録します。「→」ボタンで次へ進んでください。", { typewriter:false, force:true });
           } else {
             hideRematchButton();
+            qSet("pd_connection_status", "waiting_for_opponent_reconnect");
+            qSet("pd_connection_status_at", Date.now());
+            setCurrentPhase("opponent_disconnected_waiting");
             setStatus("相手との接続が切れています。再接続を待っています…", { typewriter:false, force:true });
           }
           return;
@@ -1102,6 +1180,7 @@ export function startGame(channel, rtc, opts = {}) {
         // ===== フェーズごとのUI制御 =====
         // 0) 準備フェーズ
         if (serverStage === "waiting") {
+          setCurrentPhase("waiting");
           setLayout("emopred");          // baseline画面のまま
           canChoose = false;
           setChoiceButtonsEnabled(false);
@@ -1115,6 +1194,7 @@ export function startGame(channel, rtc, opts = {}) {
 
         // 2) 選択フェーズ：C/D ボタンを有効化
         if (serverStage === "choice") {
+          setCurrentPhase("choice");
           setLayout("choice");
 
           if (s.myChoiceSubmitted) {
@@ -1172,6 +1252,7 @@ export function startGame(channel, rtc, opts = {}) {
 
         // 3) emotion（サーバの stage を尊重してここでだけ lastResult/感情入力）
         if (serverStage === "emotion") {
+          setCurrentPhase("emotion");
           if (s.myEmotionSubmitted) {
             setLayout("emopred");
             waitingEmotion = false;
@@ -1464,13 +1545,21 @@ export function startGame(channel, rtc, opts = {}) {
 
       // baseline完了をサーバに通知（相手待ち制御用）
       try {
-        await fetch(`${API_BASE}/game/ready`, {
+        const resp = await fetch(`${API_BASE}/game/ready`, {
           method: "POST",
           headers: { "Content-Type":"application/json" },
           body: JSON.stringify({ channel, playerId: pid }),
         });
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => "");
+          qSet("pd_ready_error", `http_${resp.status}`);
+          qSet("pd_ready_error_detail", text);
+          qSet("pd_ready_error_at", Date.now());
+        }
       } catch (e) {
         console.error("game/ready failed", e);
+        qSet("pd_ready_error", e?.message || String(e));
+        qSet("pd_ready_error_at", Date.now());
       }
 
       // ここで通常フロー開始
@@ -1490,13 +1579,24 @@ export function startGame(channel, rtc, opts = {}) {
 
       if (resp.status === 409) {
         const data = await resp.json().catch(() => null);
+        qSet("pd_emotion_error", "conflict");
+        qSet("pd_emotion_error_detail", data || "");
+        qSet("pd_emotion_error_at", Date.now());
         currentRound = data?.serverRound || currentRound;
         renderRound();
         setStatus("画面を最新状態に同期しました。しばらくお待ちください。", { typewriter:false, force:true });
         return;
       }
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => "");
+        qSet("pd_emotion_error", `http_${resp.status}`);
+        qSet("pd_emotion_error_detail", text);
+        qSet("pd_emotion_error_at", Date.now());
+      }
     } catch (e) {
       console.error("game/emotion failed", e);
+      qSet("pd_emotion_error", e?.message || String(e));
+      qSet("pd_emotion_error_at", Date.now());
     }
 
     setStatus(`Round ${currentRound}/${MAX_ROUNDS}\n相手の感情入力が終わるのを待っています…`, { typewriter:false, force:true });

@@ -6,7 +6,7 @@ import { v4 as uuid } from "uuid";
 import pkg from "agora-access-token";
 const { RtcTokenBuilder, RtcRole } = pkg;
 
-const MAX_ROUNDS = 3;
+const MAX_ROUNDS = 5;
 
 // QualtricsのURLを許可する
 const allowedOrigin = [
@@ -92,6 +92,7 @@ function buildStorageConfig(channel) {
 
 // Cloud Recording のセッション情報を保持（簡易: メモリ）
 const recordings = new Map(); // channel -> { resourceId, sid, uid }
+const recordingStates = new Map(); // channel -> { status, ...diagnostics }
 
 // 録画用 UID（通常の参加者と被らない値）
 const RECORD_UID = Number(process.env.AGORA_RECORD_UID || 9999);
@@ -110,12 +111,22 @@ function logPhaseEvent(channel, event) {
 async function startCloudRecording(channel) {
   try {
     if (recordings.has(channel)) {
+      const existing = recordings.get(channel);
+      recordingStates.set(channel, {
+        status: "started",
+        sid: existing.sid,
+        startedAtMs: existing.startedAtMs,
+      });
       return recordings.get(channel);
     }
 
     const room = rooms.get(channel);
     if (!room?.seats) {
       console.warn("[recording] seats not ready", channel);
+      recordingStates.set(channel, {
+        status: "waiting_for_seats",
+        atMs: nowMs(),
+      });
       return null;
     }
 
@@ -126,8 +137,25 @@ async function startCloudRecording(channel) {
 
     if (!leftUid || !rightUid) {
       console.warn("[recording] uidMap not ready", { channel, leftPid, rightPid, uidMap: room.uidMap });
+      recordingStates.set(channel, {
+        status: "waiting_for_uids",
+        atMs: nowMs(),
+        leftPid,
+        rightPid,
+        hasLeftUid: !!leftUid,
+        hasRightUid: !!rightUid,
+      });
       return null;
     }
+
+    recordingStates.set(channel, {
+      status: "starting",
+      atMs: nowMs(),
+      leftPid,
+      rightPid,
+      leftUid,
+      rightUid,
+    });
 
     // 1) acquire
     const acquireResp = await fetch(
@@ -151,6 +179,12 @@ async function startCloudRecording(channel) {
     const acquireData = await acquireResp.json();
     if (!acquireResp.ok) {
       console.error("[recording] acquire failed", acquireData);
+      recordingStates.set(channel, {
+        status: "failed",
+        step: "acquire",
+        atMs: nowMs(),
+        detail: acquireData,
+      });
       return null;
     }
     const resourceId = acquireData.resourceId;
@@ -245,6 +279,12 @@ if (recToken) clientRequest.token = recToken;
     const startData = await startResp.json();
     if (!startResp.ok) {
       console.error("[recording] start failed", startData);
+      recordingStates.set(channel, {
+        status: "failed",
+        step: "start",
+        atMs: nowMs(),
+        detail: startData,
+      });
       return null;
     }
 
@@ -260,6 +300,15 @@ if (recToken) clientRequest.token = recToken;
       rightUid,
     };
     recordings.set(channel, info);
+    recordingStates.set(channel, {
+      status: "started",
+      sid,
+      startedAtMs: info.startedAtMs,
+      leftPid,
+      rightPid,
+      leftUid,
+      rightUid,
+    });
     console.log("[recording] started", channel, info);
 
     logPhaseEvent(channel, {
@@ -272,6 +321,12 @@ if (recToken) clientRequest.token = recToken;
     return info;
   } catch (err) {
     console.error("[recording] start error", err);
+    recordingStates.set(channel, {
+      status: "failed",
+      step: "exception",
+      atMs: nowMs(),
+      message: err?.message || String(err),
+    });
     return null;
   }
 }
@@ -331,6 +386,13 @@ async function stopCloudRecording(channel) {
     }
 
     recordings.delete(channel);
+    recordingStates.set(channel, {
+      status: stopResp.ok ? "stopped" : "stop_failed",
+      atMs: nowMs(),
+      httpStatus: stopResp.status,
+      uploadingStatus: stopData?.serverResponse?.uploadingStatus || null,
+      fileList: stopData?.serverResponse?.fileList || null,
+    });
 
     console.log("[recording] stopped", channel, stopData);
     console.log("[recording] uploadingStatus", stopData?.serverResponse?.uploadingStatus);
@@ -339,6 +401,11 @@ async function stopCloudRecording(channel) {
     return stopData;
   } catch (err) {
     console.error("[recording] stop error", err);
+    recordingStates.set(channel, {
+      status: "stop_failed",
+      atMs: nowMs(),
+      message: err?.message || String(err),
+    });
     return null;
   }
 }
@@ -730,6 +797,8 @@ function buildGameSnapshot(channel, playerId) {
   const seats = room?.seats || null;
   const leftTotal = seats?.left ? (g.totals.get(seats.left) || 0) : 0;
   const rightTotal = seats?.right ? (g.totals.get(seats.right) || 0) : 0;
+  const rec = recordings.get(channel) || null;
+  const recordingState = recordingStates.get(channel) || null;
 
   return {
     exists: true,
@@ -751,6 +820,10 @@ function buildGameSnapshot(channel, playerId) {
     seats,
     leftTotal,
     rightTotal,
+    recordingStarted: !!rec,
+    recordingSid: rec?.sid || null,
+    recordingStatus: recordingState?.status || (rec ? "started" : "not_started"),
+    recordingState,
   };
 }
 
@@ -820,6 +893,7 @@ app.get("/record/meta", (req, res) => {
     seats: room?.seats || null,
     uidMap: room?.uidMap || null,
     recording: rec || null,
+    recordingState: recordingStates.get(channel) || null,
     phaseEvents: phaseEvents.get(channel) || [],
   });
 });
