@@ -1083,7 +1083,12 @@ export function startGame(channel, rtc, opts = {}) {
             }
 
             try {
-              localStorage.setItem("pd_finished_" + participantId, "1");
+              const responseId = window.__PD__?.responseId || "";
+              if (responseId) {
+                localStorage.setItem("pd_finished_" + responseId, "1");
+              } else {
+                sessionStorage.setItem("pd_finished_session_" + participantId, "1");
+              }
             } catch (e) {}
 
             window.__PD_GAME_OVER__ = true;

@@ -49,6 +49,20 @@ function pdRevealNextButton(q) {
   }
 }
 
+function pdHideNextButton(q) {
+  try {
+    q.hideNextButton();
+    q.hidePreviousButton();
+  } catch (e) {}
+
+  var els = document.querySelectorAll("#NextButton, #PreviousButton, #Buttons");
+  for (var i = 0; i < els.length; i++) {
+    els[i].style.setProperty("display", "none", "important");
+    els[i].style.setProperty("visibility", "hidden", "important");
+    els[i].style.setProperty("pointer-events", "none", "important");
+  }
+}
+
 Qualtrics.SurveyEngine.addOnload(function () {
   var q = this;
   
@@ -104,8 +118,7 @@ Qualtrics.SurveyEngine.addOnload(function () {
     });
   }
 
-  q.hideNextButton();
-  q.hidePreviousButton();
+  pdHideNextButton(q);
 
   // マッチング中の見た目
   var container = document.querySelector(".container");
@@ -128,12 +141,13 @@ Qualtrics.SurveyEngine.addOnload(function () {
 
       // 同じQualtrics設問が再ロードされてもゲームを再スタートしないための印
       try {
-        var pidForFinish =
-          (window.__PD__ && window.__PD__.participantId) ||
-          (window.__PD__ && window.__PD__.responseId) ||
-          "";
-        if (pidForFinish) {
-          localStorage.setItem("pd_finished_" + pidForFinish, "1");
+        var pdState = window.__PD__ || {};
+        var responseIdForFinish = pdState.responseId || "";
+        var pidForFinish = pdState.participantId || "";
+        if (responseIdForFinish) {
+          localStorage.setItem("pd_finished_" + responseIdForFinish, "1");
+        } else if (pidForFinish) {
+          sessionStorage.setItem("pd_finished_session_" + pidForFinish, "1");
         }
       } catch (e) {}
 
@@ -156,6 +170,7 @@ Qualtrics.SurveyEngine.addOnload(function () {
 
 Qualtrics.SurveyEngine.addOnReady(function () {
   var q = this;
+  pdHideNextButton(q);
 
   // ResponseID共有
   var rid = "${e://Field/ResponseID}";
@@ -186,7 +201,15 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   // すでにゲーム終了済みなら、match.jsを読み込まない
   try {
     var finishedKey = pid ? "pd_finished_" + pid : "";
-    if (finishedKey && localStorage.getItem(finishedKey) === "1") {
+    var sessionFinishedKey = pid ? "pd_finished_session_" + pid : "";
+    var alreadyFinished =
+      (rid && finishedKey && localStorage.getItem(finishedKey) === "1") ||
+      (!rid && sessionFinishedKey && sessionStorage.getItem(sessionFinishedKey) === "1");
+    if (!rid && finishedKey && localStorage.getItem(finishedKey) === "1") {
+      localStorage.removeItem(finishedKey);
+      pdSetEmbeddedData("pd_loader_ignored_stale_finish", "1");
+    }
+    if (alreadyFinished) {
       window.__PD_DISABLE_AUTO_START__ = true;
       pdSetEmbeddedData("pd_loader_status", "already_finished");
   
