@@ -28,6 +28,8 @@ function pdSaveRuntimeSnapshot(reason) {
   } catch (e) {}
 }
 
+var PD_QJS_VERSION = "2026-07-05-qualtrics-next-lock-v2";
+
 function pdRevealNextButton(q) {
   try {
     q.showNextButton();
@@ -65,6 +67,8 @@ function pdHideNextButton(q) {
 
 Qualtrics.SurveyEngine.addOnload(function () {
   var q = this;
+  console.log("[PD QJS] loaded", PD_QJS_VERSION);
+  pdSetEmbeddedData("pd_qjs_version", PD_QJS_VERSION);
   
   window.__PD_GAME_OVER__ = false;
   window.__PD_SURVEY_READY__ = false;
@@ -184,10 +188,10 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   var pid = rid;
   try {
     if (!pid) {
-      pid = localStorage.getItem("pd_player_id");
+      pid = sessionStorage.getItem("pd_player_id_session");
       if (!pid && window.crypto && crypto.randomUUID) {
         pid = crypto.randomUUID();
-        localStorage.setItem("pd_player_id", pid);
+        sessionStorage.setItem("pd_player_id_session", pid);
       }
     }
   } catch (e) {}
@@ -198,24 +202,13 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   };
   pdSetEmbeddedData("pd_player_id_from_qjs", pid || "");
 
-  // すでにゲーム終了済みなら、match.jsを読み込まない
+  // 古い完了済み印だけではゲーム開始を止めない。
+  // Qualtrics Preview や再テストで同じローカルIDが使われると、マッチング不能になるため。
   try {
     var finishedKey = pid ? "pd_finished_" + pid : "";
-    var sessionFinishedKey = pid ? "pd_finished_session_" + pid : "";
-    var alreadyFinished =
-      (rid && finishedKey && localStorage.getItem(finishedKey) === "1") ||
-      (!rid && sessionFinishedKey && sessionStorage.getItem(sessionFinishedKey) === "1");
     if (!rid && finishedKey && localStorage.getItem(finishedKey) === "1") {
       localStorage.removeItem(finishedKey);
       pdSetEmbeddedData("pd_loader_ignored_stale_finish", "1");
-    }
-    if (alreadyFinished) {
-      window.__PD_DISABLE_AUTO_START__ = true;
-      pdSetEmbeddedData("pd_loader_status", "already_finished");
-  
-      pdRevealNextButton(q);
-  
-      return;
     }
   } catch (e) {}
 

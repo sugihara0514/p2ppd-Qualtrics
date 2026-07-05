@@ -578,11 +578,11 @@ export function startGame(channel, rtc, opts = {}) {
     opts.participantId ||
     (window.__PD_MATCH_CTX__ && window.__PD_MATCH_CTX__.participantId) ||
     (window.__PD__ && (window.__PD__.participantId || window.__PD__.responseId)) ||
-    localStorage.getItem("pd_player_id");
+    sessionStorage.getItem("pd_player_id_session");
 
   if (!pid) {
     pid = crypto.randomUUID();
-    localStorage.setItem("pd_player_id", pid);
+    sessionStorage.setItem("pd_player_id_session", pid);
   }
 
   pid = String(pid);

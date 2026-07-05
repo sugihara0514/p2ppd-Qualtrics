@@ -28,15 +28,24 @@ let activeRtc = null;
 let activeCtx = null;
 
 function getParticipantId() {
+  const responseId = (window.__PD__ && window.__PD__.responseId) || "";
   let pid =
-    (window.__PD__ && (window.__PD__.participantId || window.__PD__.responseId)) ||
-    localStorage.getItem("pd_player_id");
+    responseId ||
+    (window.__PD__ && window.__PD__.participantId) ||
+    sessionStorage.getItem("pd_player_id_session");
 
   if (!pid) {
     pid = crypto.randomUUID();
-    localStorage.setItem("pd_player_id", pid);
+    sessionStorage.setItem("pd_player_id_session", pid);
   }
   return String(pid);
+}
+
+function resetSessionParticipantId() {
+  const pid = crypto.randomUUID();
+  sessionStorage.setItem("pd_player_id_session", pid);
+  if (window.__PD__) window.__PD__.participantId = pid;
+  return pid;
 }
 
 function stopHeartbeat() {
@@ -214,10 +223,27 @@ export async function enterFlow(APP_ID, useToken = true) {
   }
 
   // 1) /join
-  const reg = await joinQueue({
+  let reg = await joinQueue({
     participantId: ctx.participantId,
     resumeToken: ctx.resumeToken,
   });
+
+  if (reg?.error === "resume_token_required" && !(window.__PD__ && window.__PD__.responseId)) {
+    clearMatchCtx();
+    ctx = {
+      participantId: resetSessionParticipantId(),
+      resumeToken: null,
+      channel: null,
+    };
+    reg = await joinQueue({
+      participantId: ctx.participantId,
+      resumeToken: ctx.resumeToken,
+    });
+  }
+
+  if (reg?.error) {
+    throw new Error(reg.error);
+  }
 
   ctx = writeMatchCtx({
     participantId: reg.participantId || ctx.participantId,
