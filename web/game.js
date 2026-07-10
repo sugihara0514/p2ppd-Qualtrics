@@ -15,8 +15,10 @@ export function startGame(channel, rtc, opts = {}) {
   let baselineEmotionDone = false;
   let emotionRoundOverride = null; // 0回目用に round を上書き
   let baselineEmotionStartLogged = false;
+  let waitingPrecheck = false;
 
   function showBaselineEmotionUI() {
+    waitingPrecheck = false;
     baselineEmotionDone = false;
     emotionRoundOverride = 0;
 
@@ -68,6 +70,58 @@ export function startGame(channel, rtc, opts = {}) {
   const blockEmo    = document.getElementById("block_emo");
   const blockChoice = document.getElementById("block_choice");
   const blockNext   = document.getElementById("block_next");
+  const blockPrecheck = ensurePrecheckBlock();
+
+  function ensurePrecheckBlock() {
+    let block = document.getElementById("block_precheck");
+    if (block) return block;
+
+    block = document.createElement("div");
+    block.id = "block_precheck";
+    block.className = "unvisible disable";
+    block.innerHTML = `
+      <div id="precheck_panel" role="group" aria-labelledby="precheck_title">
+        <div id="precheck_title">開始前確認</div>
+        <label class="precheck_item">
+          <input type="checkbox" id="precheck_local_video">
+          <span>自分の映像が表示されている</span>
+        </label>
+        <label class="precheck_item">
+          <input type="checkbox" id="precheck_remote_video">
+          <span>相手の映像が表示されている</span>
+        </label>
+        <label class="precheck_item">
+          <input type="checkbox" id="precheck_audio">
+          <span>相手の声が聞こえ、自分の声も届いている</span>
+        </label>
+        <label class="precheck_item">
+          <input type="checkbox" id="precheck_ready">
+          <span>問題がないのでゲームを開始できる</span>
+        </label>
+      </div>
+    `;
+    ui?.appendChild(block);
+    return block;
+  }
+
+  function getPrecheckInputs() {
+    return Array.from(blockPrecheck?.querySelectorAll("input[type='checkbox']") || []);
+  }
+
+  function areAllPrecheckItemsChecked() {
+    const inputs = getPrecheckInputs();
+    return inputs.length > 0 && inputs.every((input) => input.checked);
+  }
+
+  function resetPrecheckItems() {
+    getPrecheckInputs().forEach((input) => {
+      input.checked = false;
+    });
+  }
+
+  getPrecheckInputs().forEach((input) => {
+    input.addEventListener("change", updateNextEnabled);
+  });
 
   function moveBlocksTo(container, blocks) {
     for (const b of blocks) {
@@ -86,11 +140,11 @@ export function startGame(channel, rtc, opts = {}) {
     }
   }
 
-  function setLayout(mode /* "emopred" | "choice" */) {
+  function setLayout(mode /* "emopred" | "choice" | "precheck" */) {
     if (!layoutEmoPred || !layoutChoice) return;
 
     layoutEmoPred.classList.toggle("is_active", mode === "emopred");
-    layoutChoice .classList.toggle("is_active", mode === "choice");
+    layoutChoice .classList.toggle("is_active", mode === "choice" || mode === "precheck");
 
     if (mode === "emopred") {
       setRemoteAudio(false); // 感情/予測は相手音声OFF
@@ -99,10 +153,16 @@ export function startGame(channel, rtc, opts = {}) {
       moveBlocksTo(layoutChoice, [blockVideo]);
 
       moveBlocksTo(layoutEmoPred, [blockScore, blockMatrix, blockChat, blockEmo, blockNext]);
+      if (blockPrecheck) hideBase(blockPrecheck);
+    } else if (mode === "precheck") {
+      setRemoteAudio(true);
+
+      moveBlocksTo(layoutChoice, [blockScore, blockVideo, blockPrecheck, blockChat, blockNext]);
     } else {
       setRemoteAudio(true); // 選択は相手音声ON
 
       moveBlocksTo(layoutChoice,  [blockScore, blockVideo, blockMatrix, blockChat, blockChoice, blockNext]);
+      if (blockPrecheck) hideBase(blockPrecheck);
     }
   }
 
@@ -771,6 +831,7 @@ export function startGame(channel, rtc, opts = {}) {
     stopPolling();
 
     canChoose = false;
+    waitingPrecheck = false;
     waitingEmotion = false;
     waitingPrediction = false;
     waitingChoiceResult = false;
@@ -832,6 +893,55 @@ export function startGame(channel, rtc, opts = {}) {
   const rtList     = [];          // [{ round, rtMs }, ...]
 
   // ゲーム参加宣言
+  function showPrecheckUI() {
+    waitingPrecheck = true;
+    canChoose = false;
+    waitingEmotion = false;
+    waitingPrediction = false;
+    waitingChoiceResult = false;
+
+    setCurrentPhase("precheck");
+    qSet("pd_precheck_started_at", Date.now());
+
+    setLayout("precheck");
+    resetPrecheckItems();
+    setChoiceButtonsEnabled(false);
+    setChoiceWaitingUI(false);
+
+    if (choiceUI) fadeOutDisable(choiceUI);
+    if (predUI) fadeOutDisable(predUI);
+    setGray(emoUI, true);
+    fadeInEnable(blockPrecheck);
+    fadeInEnable(nextButton);
+
+    setStatus(
+      "カメラとマイクを確認してください。\n相手と話して、映像と音声に問題がないことを確認したら、下の項目にチェックを入れて「次へ」を押してください。",
+      { typewriter: true, force: true }
+    );
+    updateNextEnabled();
+  }
+
+  function completePrecheck() {
+    if (!waitingPrecheck) return;
+    if (!areAllPrecheckItemsChecked()) {
+      updateNextEnabled();
+      return;
+    }
+    waitingPrecheck = false;
+
+    const checkedIds = getPrecheckInputs()
+      .filter((input) => input.checked)
+      .map((input) => input.id);
+
+    qSet("pd_precheck_done", "1");
+    qSet("pd_precheck_done_at", Date.now());
+    qSet("pd_precheck_checked_json", checkedIds);
+
+    hideBase(blockPrecheck);
+    setCurrentPhase("baseline_emotion");
+    showBaselineEmotionUI();
+  }
+
   fetch(`${API_BASE}/game/join`, {
     method: "POST",
     headers: { "Content-Type":"application/json" },
@@ -851,8 +961,7 @@ export function startGame(channel, rtc, opts = {}) {
     syncNextButtonVisualState();
 
     if (!init.baselineDone) {
-      setCurrentPhase("baseline_emotion");
-      showBaselineEmotionUI();
+      showPrecheckUI();
       return;
     }
 
@@ -900,6 +1009,11 @@ export function startGame(channel, rtc, opts = {}) {
     //   return;
     // }
     // 感情入力中なら感情確定
+    if (waitingPrecheck) {
+      completePrecheck();
+      return;
+    }
+
     if (waitingEmotion) {
       await submitEmotion();
       return;
@@ -1444,6 +1558,12 @@ export function startGame(channel, rtc, opts = {}) {
 
   function updateNextEnabled() {
     if (!nextButton) return;
+
+    if (waitingPrecheck) {
+      nextButton.disabled = !areAllPrecheckItemsChecked();
+      syncNextButtonVisualState();
+      return;
+    }
 
     if (canChoose) {
       nextButton.disabled = !pendingChoice;
