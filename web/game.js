@@ -320,15 +320,17 @@ export function startGame(channel, rtc, opts = {}) {
 
   function renderMuteUI() {
     if (!rtc) return;
-    const { micMuted, camMuted } = rtc.getMuteState();
+    const { micMuted, camMuted, hasMic = true, hasCam = true } = rtc.getMuteState();
 
     if (micToggleBtn) {
+      micToggleBtn.disabled = !hasMic;
       micToggleBtn.setAttribute("aria-pressed", String(micMuted));
-      micToggleBtn.textContent = micMuted ? "🎤 Mic OFF" : "🎤 Mic ON";
+      micToggleBtn.textContent = hasMic ? (micMuted ? "Mic OFF" : "Mic ON") : "Mic unavailable";
     }
     if (camToggleBtn) {
+      camToggleBtn.disabled = !hasCam;
       camToggleBtn.setAttribute("aria-pressed", String(camMuted));
-      camToggleBtn.textContent = camMuted ? "📷 Cam OFF" : "📷 Cam ON";
+      camToggleBtn.textContent = hasCam ? (camMuted ? "Cam OFF" : "Cam ON") : "Cam unavailable";
     }
   }
 
@@ -923,8 +925,12 @@ export function startGame(channel, rtc, opts = {}) {
     fadeInEnable(blockPrecheck);
     fadeInEnable(nextButton);
 
+    const mediaState = rtc?.getMuteState?.() || {};
+    const mediaWarning = (!mediaState.hasMic || !mediaState.hasCam)
+      ? "\nこの端末でカメラまたはマイクが見つかりません。接続やブラウザの権限を確認してください。"
+      : "";
     setStatus(
-      "カメラとマイクを確認してください。\n相手と話して、映像と音声に問題がないことを確認したら、下の項目にチェックを入れて「次へ」を押してください。",
+      "カメラとマイクを確認してください。\n相手と話して、映像と音声に問題がないことを確認したら、下の項目にチェックを入れて「次へ」を押してください。" + mediaWarning,
       { typewriter: true, force: true }
     );
     updateNextEnabled();

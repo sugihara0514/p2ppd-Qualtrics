@@ -2,6 +2,7 @@
 export function createRtc(APP_ID) {
   const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
   let micTrack = null, camTrack = null, joined = false;
+  let mediaErrors = { mic: null, cam: null };
 
   // 現在のミュート状態
   let micMuted = false;
@@ -47,10 +48,31 @@ export function createRtc(APP_ID) {
   return {
     async join(channel, token=null, uid=null) {
       const myUid = await client.join(APP_ID, channel, token, uid);
-      [micTrack, camTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
-      camTrack.play("localContainer");
-      await client.publish([micTrack, camTrack]);
       joined = true;
+      mediaErrors = { mic: null, cam: null };
+
+      try {
+        micTrack = await AgoraRTC.createMicrophoneAudioTrack();
+      } catch (e) {
+        mediaErrors.mic = e?.message || String(e);
+        console.warn("[RTC] microphone unavailable", e);
+      }
+
+      try {
+        camTrack = await AgoraRTC.createCameraVideoTrack();
+        camTrack.play("localContainer");
+      } catch (e) {
+        mediaErrors.cam = e?.message || String(e);
+        console.warn("[RTC] camera unavailable", e);
+      }
+
+      const tracks = [micTrack, camTrack].filter(Boolean);
+      if (tracks.length > 0) {
+        await client.publish(tracks);
+      } else {
+        const lc = document.getElementById("localContainer");
+        if (lc) lc.innerHTML = '<span class="label">No camera / microphone</span>';
+      }
 
       // 追加：join直後に、現在のミュート状態を反映
       await applyMuteState();
@@ -101,7 +123,14 @@ export function createRtc(APP_ID) {
 
     // 外から状態取得（UI更新用）
     getMuteState() {
-      return { micMuted, camMuted, joined };
+      return {
+        micMuted,
+        camMuted,
+        joined,
+        hasMic: !!micTrack,
+        hasCam: !!camTrack,
+        mediaErrors,
+      };
     },
     
     // ミュート切替
