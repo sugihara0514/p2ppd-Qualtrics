@@ -1377,8 +1377,10 @@ h1 {
 #layout_choice  #block_precheck { order: 2; }
 #layout_choice  #block_next   { order: 5; }
 
-#block_precheck.unvisible{
-  display: none;
+#block_precheck.unvisible,
+#layout_choice #block_precheck.unvisible,
+#layout_emopred #block_precheck.unvisible{
+  display: none !important;
 }
 
 #block_precheck:not(.disable){

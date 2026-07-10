@@ -167,6 +167,7 @@ export function startGame(channel, rtc, opts = {}) {
     } else {
       setRemoteAudio(true); // 選択は相手音声ON
 
+      moveBlocksTo(layoutEmoPred, [blockPrecheck]);
       moveBlocksTo(layoutChoice,  [blockScore, blockVideo, blockMatrix, blockChat, blockChoice, blockNext]);
       if (blockPrecheck) hideBase(blockPrecheck);
     }
