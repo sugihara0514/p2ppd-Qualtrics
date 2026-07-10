@@ -1414,11 +1414,18 @@ h1 {
   user-select: none;
 }
 
-.precheck_item input{
+.precheck_item input[type="checkbox"]{
+  -webkit-appearance: checkbox !important;
+  appearance: auto !important;
+  display: inline-block !important;
+  opacity: 1 !important;
+  position: static !important;
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
   cursor: pointer;
+  margin: 0;
+  accent-color: #111;
 }
 
 /* ===== 新UI：感情スライダー ===== */

@@ -811,6 +811,9 @@ function buildGameSnapshot(channel, playerId) {
     leftBy: g.leftBy || null,
     leftReason: g.leftReason || null,
     baselineDone: g.ready?.has(meId) || false,
+    precheckDone: g.precheckReady?.has(meId) || false,
+    precheckReady: g.precheckReady?.size || 0,
+    playerCount: g.players?.size || 0,
     myChoiceSubmitted: g.choices.has(meId),
     myEmotionSubmitted: g.emotions.has(meId),
     opponentConnected,
@@ -843,6 +846,7 @@ app.post("/game/join", async (req, res) => {
     games.set(channel, {
       round: 1,
       players: new Set(),
+      precheckReady: new Set(),
       stage: "waiting",          // 初期wating、その後emotion、choice
       ready: new Set(),          // baseline完了した人
       predictions: new Map(),    // playerId -> predictionValue
@@ -1179,6 +1183,35 @@ app.post("/game/emotion", async (req, res) => {
 });
 
 // baseline（0回目）完了通知
+app.post("/game/precheck-ready", (req, res) => {
+  const { channel, playerId } = req.body || {};
+  if (!channel || !playerId) {
+    return res.status(400).json({ error: "channel and playerId required" });
+  }
+  const g = games.get(channel);
+  if (!g) return res.status(400).json({ error: "game_not_found", channel });
+  if (g.over) return res.status(400).json({ error: "game_over" });
+
+  g.players.add(String(playerId));
+  if (!g.precheckReady) g.precheckReady = new Set();
+  g.precheckReady.add(String(playerId));
+
+  logPhaseEvent(channel, {
+    round: 0,
+    phase: "precheck_ready",
+    participantId: String(playerId),
+    seat: getSeatForParticipant(channel, String(playerId)),
+  });
+
+  return res.json({
+    ok: true,
+    precheckReady: g.precheckReady.size,
+    players: g.players.size,
+    bothPrecheckReady: g.players.size >= 2 && g.precheckReady.size >= 2,
+    ...buildGameSnapshot(channel, playerId),
+  });
+});
+
 app.post("/game/ready", (req, res) => {
   const { channel, playerId } = req.body || {};
   if (!channel || !playerId) {

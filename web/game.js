@@ -116,6 +116,7 @@ export function startGame(channel, rtc, opts = {}) {
   function resetPrecheckItems() {
     getPrecheckInputs().forEach((input) => {
       input.checked = false;
+      input.disabled = false;
     });
   }
 
@@ -830,6 +831,7 @@ export function startGame(channel, rtc, opts = {}) {
 
   function enterRematchWaitingUI(message = "再マッチ中です。新しい相手を探しています…") {
     stopPolling();
+    stopPrecheckPolling();
 
     canChoose = false;
     waitingPrecheck = false;
@@ -874,6 +876,7 @@ export function startGame(channel, rtc, opts = {}) {
   let canChoose = false;
   let hasChosenThisRound = false;
   let pollTimer = null;
+  let precheckPollTimer = null;
   const history = []; // {round, me, opp, youPayoff, youTotal}
 
   let pendingChoice = null; // "C" or "D"（仮決定）
@@ -895,6 +898,7 @@ export function startGame(channel, rtc, opts = {}) {
 
   // ゲーム参加宣言
   function showPrecheckUI() {
+    stopPrecheckPolling();
     waitingPrecheck = true;
     canChoose = false;
     waitingEmotion = false;
@@ -922,13 +926,59 @@ export function startGame(channel, rtc, opts = {}) {
     updateNextEnabled();
   }
 
-  function completePrecheck() {
+  function stopPrecheckPolling() {
+    if (precheckPollTimer) {
+      clearInterval(precheckPollTimer);
+      precheckPollTimer = null;
+    }
+  }
+
+  function isBothPrecheckReady(s) {
+    const playerCount = Number(s.playerCount ?? s.players ?? 0);
+    return !!s && playerCount >= 2 && Number(s.precheckReady || 0) >= 2;
+  }
+
+  function enterBaselineAfterPrecheck() {
+    stopPrecheckPolling();
+    waitingPrecheck = false;
+    hideBase(blockPrecheck);
+    setCurrentPhase("baseline_emotion");
+    showBaselineEmotionUI();
+  }
+
+  function startPrecheckPolling() {
+    stopPrecheckPolling();
+    const poll = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/game/state?channel=${encodeURIComponent(channel)}&playerId=${encodeURIComponent(pid)}`);
+        const s = await r.json();
+        if (!s.exists) return;
+
+        if (s.opponentConnected === false) {
+          setStatus("相手との接続が切れています。再接続を待っています…", { typewriter: false, force: true });
+          return;
+        }
+
+        if (isBothPrecheckReady(s)) {
+          enterBaselineAfterPrecheck();
+          return;
+        }
+
+        setStatus("あなたの確認は完了しました。\n相手の確認完了を待っています…", { typewriter: false, force: true });
+      } catch (e) {
+        console.error("precheck poll failed", e);
+      }
+    };
+    poll();
+    precheckPollTimer = setInterval(poll, 800);
+  }
+
+  async function completePrecheck() {
     if (!waitingPrecheck) return;
     if (!areAllPrecheckItemsChecked()) {
       updateNextEnabled();
       return;
     }
-    waitingPrecheck = false;
 
     const checkedIds = getPrecheckInputs()
       .filter((input) => input.checked)
@@ -938,9 +988,36 @@ export function startGame(channel, rtc, opts = {}) {
     qSet("pd_precheck_done_at", Date.now());
     qSet("pd_precheck_checked_json", checkedIds);
 
-    hideBase(blockPrecheck);
-    setCurrentPhase("baseline_emotion");
-    showBaselineEmotionUI();
+    getPrecheckInputs().forEach((input) => {
+      input.disabled = true;
+    });
+    hideBase(nextButton);
+    setStatus("確認完了を送信しています…", { typewriter: false, force: true });
+
+    try {
+      const resp = await fetch(`${API_BASE}/game/precheck-ready`, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ channel, playerId: pid }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`);
+      if (isBothPrecheckReady(data)) {
+        enterBaselineAfterPrecheck();
+        return;
+      }
+      startPrecheckPolling();
+    } catch (e) {
+      console.error("game/precheck-ready failed", e);
+      qSet("pd_precheck_ready_error", e?.message || String(e));
+      qSet("pd_precheck_ready_error_at", Date.now());
+      getPrecheckInputs().forEach((input) => {
+        input.disabled = false;
+      });
+      fadeInEnable(nextButton);
+      setStatus("確認完了の送信に失敗しました。少し待ってからもう一度「次へ」を押してください。", { typewriter: false, force: true });
+      updateNextEnabled();
+    }
   }
 
   fetch(`${API_BASE}/game/join`, {
@@ -962,6 +1039,19 @@ export function startGame(channel, rtc, opts = {}) {
     syncNextButtonVisualState();
 
     if (!init.baselineDone) {
+      if (init.precheckDone) {
+        waitingPrecheck = true;
+        setLayout("precheck");
+        resetPrecheckItems();
+        getPrecheckInputs().forEach((input) => {
+          input.checked = true;
+          input.disabled = true;
+        });
+        fadeInEnable(blockPrecheck);
+        hideBase(nextButton);
+        startPrecheckPolling();
+        return;
+      }
       showPrecheckUI();
       return;
     }
@@ -1011,7 +1101,7 @@ export function startGame(channel, rtc, opts = {}) {
     // }
     // 感情入力中なら感情確定
     if (waitingPrecheck) {
-      completePrecheck();
+      await completePrecheck();
       return;
     }
 
