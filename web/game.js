@@ -225,7 +225,7 @@ export function startGame(channel, rtc, opts = {}) {
 
   // 追加コメント
   const ROUND_CHOICE_COMMENTS = {
-    1: "練習1回目です。\n操作に慣れながら、相手と相談してみてください。",
+    1: "練習1回目です。\nテキスト1",
     2: "練習2回目です。\nテキスト2",
     3: "練習3回目です。\nテキスト3",
     4: "練習4回目です。\nテキスト4",
@@ -318,10 +318,10 @@ export function startGame(channel, rtc, opts = {}) {
   };
   
   const REAL_PAYOFF_DISPLAY = {
-    CC: { you: "400", opp: "400" },
-    CD: { you: "0",    opp: "600" },
-    DC: { you: "600", opp: "0" },
-    DD: { you: "200",    opp: "200" },
+    CC: { you: "600", opp: "600" },
+    CD: { you: "0",    opp: "900" },
+    DC: { you: "900", opp: "0" },
+    DD: { you: "300",    opp: "300" },
   };
 
   function renderMatrixPayoff(round) {
