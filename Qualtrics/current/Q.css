@@ -1406,26 +1406,65 @@ h1 {
 }
 
 .precheck_item{
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 34px;
   line-height: 1.35;
   cursor: pointer;
   user-select: none;
 }
 
 .precheck_item input[type="checkbox"]{
-  -webkit-appearance: checkbox !important;
-  appearance: auto !important;
-  display: inline-block !important;
-  opacity: 1 !important;
-  position: static !important;
-  width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
+  position: absolute !important;
+  width: 28px;
+  height: 28px;
+  opacity: 0 !important;
   cursor: pointer;
   margin: 0;
-  accent-color: #111;
+  z-index: 2;
+}
+
+.precheck_mark{
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  box-sizing: border-box;
+  border: 2px solid #111;
+  border-radius: 4px;
+  background: #fff;
+  position: relative;
+}
+
+.precheck_item input[type="checkbox"]:checked + .precheck_mark{
+  background: #111;
+  border-color: #111;
+}
+
+.precheck_item input[type="checkbox"]:checked + .precheck_mark::after{
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 3px;
+  width: 7px;
+  height: 13px;
+  border: solid #fff;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
+.precheck_item input[type="checkbox"]:focus-visible + .precheck_mark{
+  outline: 3px solid #6aa6ff;
+  outline-offset: 2px;
+}
+
+.precheck_item input[type="checkbox"]:disabled + .precheck_mark{
+  opacity: 0.55;
+}
+
+.precheck_text{
+  flex: 1 1 auto;
 }
 
 /* ===== 新UI：感情スライダー ===== */

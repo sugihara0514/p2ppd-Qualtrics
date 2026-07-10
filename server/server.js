@@ -831,6 +831,24 @@ function buildGameSnapshot(channel, playerId) {
 }
 
 // ゲーム参加（channel と client側で作った playerId を紐づけ）
+function createGameState() {
+  return {
+    round: 1,
+    players: new Set(),
+    precheckReady: new Set(),
+    stage: "waiting",
+    ready: new Set(),
+    predictions: new Map(),
+    choices: new Map(),
+    emotions: new Map(),
+    choiceLedger: new Map(),
+    emotionLedger: new Map(),
+    totals: new Map(),
+    lastResult: null,
+    over: false,
+  };
+}
+
 app.post("/game/join", async (req, res) => {
   const { channel, playerId } = req.body || {};
   if (!channel || !playerId) {
@@ -1188,8 +1206,15 @@ app.post("/game/precheck-ready", (req, res) => {
   if (!channel || !playerId) {
     return res.status(400).json({ error: "channel and playerId required" });
   }
+  const room = rooms.get(channel);
+  if (!room) return res.status(404).json({ error: "room_not_found", exists: false, channel });
+
+  if (!games.has(channel)) {
+    console.warn("[precheck-ready] game state missing; recreating", { channel, playerId });
+    games.set(channel, createGameState());
+  }
+
   const g = games.get(channel);
-  if (!g) return res.status(400).json({ error: "game_not_found", channel });
   if (g.over) return res.status(400).json({ error: "game_over" });
 
   g.players.add(String(playerId));
