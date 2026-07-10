@@ -1381,6 +1381,11 @@ h1 {
   display: none;
 }
 
+#block_precheck:not(.disable){
+  pointer-events: auto;
+  z-index: auto;
+}
+
 #precheck_panel{
   width: min(540px, calc(100% - 24px));
   box-sizing: border-box;
@@ -1405,12 +1410,15 @@ h1 {
   align-items: center;
   gap: 10px;
   line-height: 1.35;
+  cursor: pointer;
+  user-select: none;
 }
 
 .precheck_item input{
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
+  cursor: pointer;
 }
 
 /* ===== 新UI：感情スライダー ===== */
