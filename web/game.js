@@ -387,10 +387,10 @@ export function startGame(channel, rtc, opts = {}) {
   };
   
   const REAL_PAYOFF_DISPLAY = {
-    CC: { you: "600", opp: "600" },
-    CD: { you: "0",    opp: "900" },
-    DC: { you: "900", opp: "0" },
-    DD: { you: "300",    opp: "300" },
+    CC: { you: "1500", opp: "1500" },
+    CD: { you: "0", opp: "3000" },
+    DC: { you: "3000", opp: "0" },
+    DD: { you: "0", opp: "0" },
   };
 
   function renderMatrixPayoff(round) {
@@ -1292,7 +1292,7 @@ export function startGame(channel, rtc, opts = {}) {
                 force: true,
               });
             } else {
-              setStatus(`ゲーム終了！\nあなたの本番ラウンドの報酬は ${finalTotal}pt です。\n「→」ボタンで次へ進んでください。`, {
+              setStatus(`ゲーム終了！\nあなたの本番ラウンドの報酬は ${finalTotal}円 です。\n「→」ボタンで次へ進んでください。`, {
                 typewriter: false,
                 force: true,
               });
@@ -1316,9 +1316,12 @@ export function startGame(channel, rtc, opts = {}) {
 
           // 再マッチ対象の終了は、次へを出さない
           if (reason === "opponent_disconnected") {
-            hideRematchButton();
-            releaseSurveyAsIncomplete(reason, s);
-            setStatus("相手との接続が切れたため、このゲームは中断として記録します。「→」ボタンで次へ進んでください。", {
+            window.__PD_GAME_OVER__ = false;
+            window.__PD_SURVEY_READY__ = false;
+            window.__PD_REMATCHING__ = false;
+
+            showRematchButton();
+            setStatus("相手との接続が切れました。再マッチする場合は「🔄 再マッチ」を押してください。", {
               typewriter: false,
               force: true,
             });
@@ -1355,9 +1358,8 @@ export function startGame(channel, rtc, opts = {}) {
           hideBase(nextButton);
 
           if (s.rematchEligible) {
-            hideRematchButton();
-            releaseSurveyAsIncomplete("opponent_disconnected", s);
-            setStatus("相手の再接続が一定時間確認できなかったため、このゲームは中断として記録します。「→」ボタンで次へ進んでください。", { typewriter:false, force:true });
+            showRematchButton();
+            setStatus("相手の再接続が一定時間確認できなかったため、再マッチできます。", { typewriter:false, force:true });
           } else {
             hideRematchButton();
             qSet("pd_connection_status", "waiting_for_opponent_reconnect");

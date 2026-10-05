@@ -82,7 +82,7 @@ function buildStorageConfig(channel) {
     accessKey,
     secretKey,
     // バケット内のパス: pd/<channel>/...
-    fileNamePrefix: ["test07XX", safeSegment], //supabaseのpdフォルダに録画を保存
+    fileNamePrefix: ["test1005", safeSegment], //supabaseのpdフォルダに録画を保存
   };
   if (endpoint) {
     cfg.extensionParams = { endpoint };
@@ -761,10 +761,10 @@ app.listen(PORT, () => console.log(`API on :${PORT}`));
 
 // --- Split or Steal ---
 const PAYOFF = {
-  CC: [400, 400], // Split / Split
-  CD: [0, 600],    // Split / Steal
-  DC: [600, 0],    // Steal / Split
-  DD: [200, 200],       // Steal / Steal
+  CC: [1500, 1500], // Split / Split
+  CD: [0, 3000],    // Split / Steal
+  DC: [3000, 0],    // Steal / Split
+  DD: [0, 0],       // Steal / Steal
 };
 
 function getRoundPayoff(round, key) {
