@@ -380,10 +380,10 @@ export function startGame(channel, rtc, opts = {}) {
   };
 
   const PRACTICE_PAYOFF_DISPLAY = {
-    CC: { you: "2", opp: "2" },
-    CD: { you: "0", opp: "3" },
-    DC: { you: "3", opp: "0" },
-    DD: { you: "1", opp: "1" },
+    CC: { you: "1500", opp: "1500" },
+    CD: { you: "0", opp: "3000" },
+    DC: { you: "3000", opp: "0" },
+    DD: { you: "0", opp: "0" },
   };
   
   const REAL_PAYOFF_DISPLAY = {
