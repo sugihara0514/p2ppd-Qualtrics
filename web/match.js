@@ -165,6 +165,7 @@ function startWaitingForPair(onPaired) {
         matchTimer = null;
 
         const nextCtx = writeMatchCtx({
+          studyId: latest.studyId,
           participantId: m.participantId || latest.participantId,
           resumeToken: m.resumeToken || latest.resumeToken,
           channel: m.channel,
@@ -207,12 +208,20 @@ window.__PD_BEGIN_REMATCH_WAIT__ = async () => {
 export async function enterFlow(APP_ID, useToken = true) {
   console.log("[MATCH] enterFlow called with APP_ID=", APP_ID);
   if (matching) return;
+  const studyId = String(window.__PD__?.studyId || "").trim();
+  if (!studyId) throw new Error("参加者IDがありません。ID入力ページから参加してください。");
   matching = true;
 
   const rtc = createRtc(APP_ID);
   activeRtc = rtc;
   let channel;
   let ctx = readMatchCtx();
+  // A different survey response or person must not reuse another session's token.
+  const currentParticipantId = getParticipantId();
+  if (ctx && (ctx.studyId !== studyId || ctx.participantId !== currentParticipantId)) {
+    clearMatchCtx();
+    ctx = null;
+  }
 
   if (!ctx?.participantId) {
     ctx = {
@@ -224,6 +233,7 @@ export async function enterFlow(APP_ID, useToken = true) {
 
   // 1) /join
   let reg = await joinQueue({
+    studyId,
     participantId: ctx.participantId,
     resumeToken: ctx.resumeToken,
   });
@@ -236,6 +246,7 @@ export async function enterFlow(APP_ID, useToken = true) {
       channel: null,
     };
     reg = await joinQueue({
+      studyId,
       participantId: ctx.participantId,
       resumeToken: ctx.resumeToken,
     });
@@ -246,6 +257,7 @@ export async function enterFlow(APP_ID, useToken = true) {
   }
 
   ctx = writeMatchCtx({
+    studyId,
     participantId: reg.participantId || ctx.participantId,
     resumeToken: reg.resumeToken || ctx.resumeToken,
     channel: reg.channel || null,
@@ -271,6 +283,7 @@ export async function enterFlow(APP_ID, useToken = true) {
           if (m && m.status === "paired" && m.channel) {
             channel = m.channel;
             ctx = writeMatchCtx({
+              studyId,
               participantId: m.participantId || ctx.participantId,
               resumeToken: m.resumeToken || ctx.resumeToken,
               channel,
@@ -371,5 +384,23 @@ const appIdFromWindow =
 // 自動起動を止めたい場合は window.__PD_DISABLE_AUTO_START__ = true を先に立てる
 if (typeof window !== "undefined" && !window.__PD_DISABLE_AUTO_START__) {
   console.log("[MATCH] auto-start enterFlow with", appIdFromWindow);
-  enterFlow(appIdFromWindow);
+  enterFlow(appIdFromWindow).catch((error) => {
+    matching = false;
+    console.error("[MATCH]", error);
+    const messages = {
+      invalid_study_id: "参加者IDを確認してください。",
+      study_id_mismatch: "保存された接続と参加者IDが一致しません。研究担当者にお知らせください。",
+      study_id_already_active: "この参加者IDは参加中です。元の画面で復帰してください。",
+      already_matched_this_session: "今回はすでにマッチング済みです。研究担当者にお知らせください。",
+      resume_token_required: "復帰情報を確認できません。元の画面を使用するか、研究担当者にお知らせください。",
+    };
+    const status = document.getElementById("gameStatus") || document.getElementById("pd-app") || document.body;
+    if (status) {
+      const notice = document.createElement("p");
+      notice.setAttribute("role", "alert");
+      notice.textContent = messages[error.message] || "参加処理に失敗しました。研究担当者にお知らせください。";
+      status.prepend(notice);
+      status.style.display = "block";
+    }
+  });
 }

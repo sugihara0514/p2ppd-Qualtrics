@@ -1,2 +1,4 @@
 .env
+server/data/
+server/node_modules/
 merged_videos/

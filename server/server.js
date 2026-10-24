@@ -2,6 +2,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { MatchHistory, normalizeStudyId } from "./match-history.js";
 import { v4 as uuid } from "uuid";
 import pkg from "agora-access-token";
 const { RtcTokenBuilder, RtcRole } = pkg;
@@ -22,6 +25,11 @@ const corsOptions = {
 };
 
 dotenv.config();
+const matchHistory = new MatchHistory({
+  historyFile: process.env.MATCH_HISTORY_FILE || null,
+  journalFile: process.env.MATCH_JOURNAL_FILE || path.join(path.dirname(fileURLToPath(import.meta.url)), 'data', 'matches.jsonl'),
+  sessionId: process.env.EXPERIMENT_SESSION_ID,
+});
 const app = express();
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
@@ -469,15 +477,15 @@ function removeFromQueue(participantId) {
   }
 }
 
-function dequeueWaitingOpponent(exceptId) {
+function dequeueWaitingOpponent(requester) {
   cleanQueue();
-  while (queue.length) {
-    const id = queue.shift();
-    if (id === exceptId) continue;
+  for (const id of queue) {
+    if (id === requester.participantId) continue;
     const p = participants.get(id);
     if (!p) continue;
     refreshConnectivity(p);
     if (p.finalLeft || p.channel) continue;
+    if (!isConnected(p) || matchHistory.has(requester.studyId, p.studyId)) continue;
     if (nowMs() - p.lastSeenAt > WAIT_TTL_MS) continue;
     return p;
   }
@@ -526,6 +534,10 @@ function buildMatchResponse(p) {
 
 function pairParticipants(a, b) {
   const channel = `room-${uuid()}`;
+  // Synchronous durable reservation, before publishing the room. Single process only.
+  matchHistory.record(a.studyId, b.studyId, channel);
+  removeFromQueue(a.participantId);
+  removeFromQueue(b.participantId);
   rooms.set(channel, {
     channel,
     users: [a.participantId, b.participantId],
@@ -550,11 +562,7 @@ function enqueueOrPair(p) {
     return buildMatchResponse(p);
   }
 
-  if (queue.includes(p.participantId)) {
-    return buildMatchResponse(p);
-  }
-
-  const other = dequeueWaitingOpponent(p.participantId);
+  const other = dequeueWaitingOpponent(p);
   if (other) {
     const channel = pairParticipants(other, p);
     return {
@@ -566,7 +574,7 @@ function enqueueOrPair(p) {
     };
   }
 
-  queue.push(p.participantId);
+  if (!queue.includes(p.participantId)) queue.push(p.participantId);
   return {
     status: "waiting",
     participantId: p.participantId,
@@ -614,16 +622,29 @@ async function finalizeRoom(channel, { overReason = "player_left", leftBy = null
 app.post("/join", (req, res) => {
   const participantId = String(req.body?.participantId || "");
   const resumeToken = String(req.body?.resumeToken || "");
+  let studyId;
+  try { studyId = normalizeStudyId(req.body?.studyId); }
+  catch { return res.status(400).json({ error: "invalid_study_id" }); }
   if (!participantId) {
     return res.status(400).json({ error: "participantId required" });
   }
 
   let p = participants.get(participantId);
+  if (p && p.studyId !== studyId) return res.status(409).json({ error: "study_id_mismatch" });
 
   // 正しい resumeToken があるなら復帰
   if (p && resumeToken && p.resumeToken === resumeToken && !p.finalLeft) {
     touchParticipant(p);
     return res.json(enqueueOrPair(p));
+  }
+
+  if ([...participants.values()].some(other => other.studyId === studyId &&
+      other.participantId !== participantId && !other.finalLeft &&
+      (other.channel || queue.includes(other.participantId)))) {
+    return res.status(409).json({ error: "study_id_already_active" });
+  }
+  if (matchHistory.usedThisSession(studyId)) {
+    return res.status(409).json({ error: "already_matched_this_session" });
   }
 
   // 既存の active session があるのに token なし/不一致なら拒否
@@ -634,6 +655,7 @@ app.post("/join", (req, res) => {
   if (!p) {
     p = {
       participantId,
+      studyId,
       resumeToken: uuid(),
       channel: null,
       lastSeenAt: nowMs(),
@@ -659,7 +681,7 @@ app.get("/match", (req, res) => {
   if (!p) return res.status(404).json({ status: "not_found" });
 
   touchParticipant(p);
-  return res.json(buildMatchResponse(p));
+  return res.json(enqueueOrPair(p));
 });
 
 app.post("/heartbeat", (req, res) => {

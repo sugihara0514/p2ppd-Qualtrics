@@ -59,12 +59,12 @@ export function clearMatchCtx() {
   } catch (e) {}
 }
 
-export async function joinQueue({ participantId, resumeToken = null }) {
+export async function joinQueue({ participantId, studyId, resumeToken = null }) {
   const r = await fetch(`${API_BASE}/join`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "omit",
-    body: JSON.stringify({ participantId, resumeToken }),
+    body: JSON.stringify({ participantId, studyId, resumeToken }),
   });
 
   const data = await r.json().catch(() => null);

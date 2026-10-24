@@ -1,4 +1,4 @@
-var PD_QJS_VERSION = "2026-07-05-qualtrics-next-lock-v3";
+var PD_QJS_VERSION = "2026-10-24-history-matching-v1";
 
 function pdSetEmbeddedData(key, val) {
   try {
@@ -236,7 +236,19 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   pdSetEmbeddedData("pd_response_id_missing", rid ? "0" : "1");
 
   var pid = pdGetParticipantId(rid);
+  var studyId = "${e://Field/pd_study_id}";
+  if (pdIsUnresolvedPipedText(studyId)) studyId = "";
+  studyId = String(studyId || "").trim();
+  if (!studyId) {
+    pdSetEmbeddedData("pd_loader_status", "missing_study_id");
+    var notice = document.createElement("p");
+    notice.setAttribute("role", "alert");
+    notice.textContent = "参加者IDがありません。研究担当者にお知らせください。";
+    q.getQuestionContainer().appendChild(notice);
+    return;
+  }
   window.__PD__ = {
+    studyId: studyId,
     responseId: rid,
     participantId: pid || "",
   };
