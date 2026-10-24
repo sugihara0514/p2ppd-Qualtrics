@@ -1,0 +1,7 @@
+/* Paste into Look & Feel > Custom CSS, or append to existing survey CSS. */
+.pd-id-intro { max-width: 640px; margin: 0 auto; line-height: 1.8; }
+.pd-id-intro h2 { font-size: 1.4em; margin-bottom: 1em; }
+.pd-id-intro p { margin-bottom: .8em; }
+.pd-id-intro .pd-id-note { color: #555; font-size: .95em; }
+.pd-id-intro .pd-id-error { color: #b42318; font-weight: 600; }
+.pd-id-intro [hidden] { display: none !important; }

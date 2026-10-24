@@ -1,0 +1,47 @@
+<style>
+  .pd-id-intro { max-width: 640px; margin: 0 auto; line-height: 1.8; }
+  .pd-id-intro h2 { font-size: 1.4em; margin-bottom: 1em; }
+  .pd-id-intro p { margin-bottom: .8em; }
+  .pd-id-intro .pd-id-note { color: #555; font-size: .95em; }
+  .pd-id-intro .pd-id-error { color: #b42318; font-weight: 600; }
+  .pd-id-intro [hidden] { display: none !important; }
+  .pd-id-question .QuestionBody {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  .pd-id-question input[type="text"],
+  .pd-id-question input:not([type]),
+  .pd-id-question textarea {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: 480px;
+    min-height: 48px;
+    margin: 16px auto;
+    padding: 12px;
+    border: 1px solid #667085 !important;
+    border-radius: 6px;
+    background: #fff !important;
+    color: #101828 !important;
+    font-size: 18px !important;
+  }
+  .pd-id-question input:focus, .pd-id-question textarea:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+</style>
+<div class="pd-id-intro">
+  <h2>参加者IDの入力</h2>
+  <p>研究担当者からお知らせした参加者IDを、下の入力欄に入力してください。</p>
+  <p>テスト時は仮のID（例：TEST001）を使用できます。複数人で接続を確認する場合は、それぞれ異なるIDを入力してください。</p>
+  <p class="pd-id-note">先頭の0、大文字・小文字、全角・半角を含め、指定されたとおりに入力してください。</p>
+  <label for="pd-study-id-input">参加者ID</label>
+  <input id="pd-study-id-input" class="pd-study-id-input" type="text"
+    placeholder="例：TEST001" autocomplete="off" autocapitalize="none"
+    spellcheck="false" aria-describedby="pd-study-id-error"
+    style="display:block;visibility:visible;opacity:1;box-sizing:border-box;width:100%;max-width:480px;min-height:48px;margin:16px 0;padding:12px;border:1px solid #667085;border-radius:6px;background:#fff;color:#101828;font-size:18px;" />
+  <p id="pd-study-id-error" class="pd-id-error" role="alert" hidden></p>
+</div>

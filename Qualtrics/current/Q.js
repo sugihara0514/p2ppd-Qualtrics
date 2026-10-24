@@ -1,4 +1,30 @@
-var PD_QJS_VERSION = "2026-10-24-history-matching-v1";
+var PD_QJS_VERSION = "2026-10-24-id-debug-v3";
+
+function pdIdDebug(stage, extra) {
+  function inspect(method, key) {
+    try {
+      var se = window.Qualtrics && Qualtrics.SurveyEngine;
+      if (!se || typeof se[method] !== "function") return { available: false };
+      var value = se[method](key);
+      return { available: true, type: typeof value, value: value === undefined ? null : value };
+    } catch (e) { return { available: true, error: String(e) }; }
+  }
+  console.log("[PD-ID] " + JSON.stringify({
+    stage: stage, at: new Date().toISOString(), version: PD_QJS_VERSION,
+    readyState: document.readyState,
+    pipedId: "${e://Field/pd_study_id}",
+    pipedJSId: "${e://Field/__js_pd_study_id}",
+    responseId: "${e://Field/ResponseID}",
+    jsId: inspect("getJSEmbeddedData", "pd_study_id"),
+    regularId: inspect("getEmbeddedData", "pd_study_id"),
+    prefixedId: inspect("getEmbeddedData", "__js_pd_study_id"),
+    windowStudyId: window.__PD__ ? window.__PD__.studyId : null,
+    windowResponseId: window.__PD__ ? window.__PD__.responseId : null,
+    appLoading: !!window.__PD_APP_LOADING__, appLoaded: !!window.__PD_APP_LOADED__,
+    extra: extra || null
+  }));
+}
+pdIdDebug("game.script_evaluated");
 
 function pdSetEmbeddedData(key, val) {
   try {
@@ -92,7 +118,9 @@ function pdGetParticipantId(rid) {
 }
 
 function pdLoadGameScripts() {
+  pdIdDebug("game.load_scripts.request");
   if (window.__PD_APP_LOADING__ || window.__PD_APP_LOADED__) {
+    pdIdDebug("game.load_scripts.skipped");
     pdSetEmbeddedData("pd_loader_status", "duplicate_skipped");
     return;
   }
@@ -106,25 +134,30 @@ function pdLoadGameScripts() {
   var rtc = document.createElement("script");
   rtc.src = "https://download.agora.io/sdk/release/AgoraRTC_N-4.20.0.js";
   rtc.onerror = function () {
+    pdIdDebug("game.agora_script.error");
     window.__PD_APP_LOADING__ = false;
     pdSetEmbeddedData("pd_loader_status", "agora_load_failed");
     pdSetEmbeddedData("pd_loader_failed_at", String(Date.now()));
   };
   rtc.onload = function () {
+    pdIdDebug("game.agora_script.loaded");
     var app = document.createElement("script");
     app.type = "module";
     app.src = "https://multimodalpd-static-65p9.onrender.com/match.js";
     app.onload = function () {
+      pdIdDebug("game.match_script.loaded", { src: app.src });
       window.__PD_APP_LOADING__ = false;
       window.__PD_APP_LOADED__ = true;
       pdSetEmbeddedData("pd_loader_status", "loaded");
       pdSetEmbeddedData("pd_loader_loaded_at", String(Date.now()));
     };
     app.onerror = function () {
+      pdIdDebug("game.match_script.error", { src: app.src });
       window.__PD_APP_LOADING__ = false;
       pdSetEmbeddedData("pd_loader_status", "match_load_failed");
       pdSetEmbeddedData("pd_loader_failed_at", String(Date.now()));
     };
+    pdIdDebug("game.match_script.append", { src: app.src });
     document.head.appendChild(app);
   };
   document.head.appendChild(rtc);
@@ -132,6 +165,7 @@ function pdLoadGameScripts() {
 
 Qualtrics.SurveyEngine.addOnload(function () {
   var q = this;
+  pdIdDebug("game.onload");
   console.log("[PD QJS] loaded", PD_QJS_VERSION);
   pdSetEmbeddedData("pd_qjs_version", PD_QJS_VERSION);
 
@@ -230,6 +264,11 @@ Qualtrics.SurveyEngine.addOnload(function () {
 
 Qualtrics.SurveyEngine.addOnReady(function () {
   var q = this;
+  pdIdDebug("game.ready.before_read");
+  // Diagnostic reads only: do not retry startup or alter matching behavior.
+  window.__PD_ID_DEBUG_TIMERS__ = [0, 500, 2000].map(function (delay) {
+    return setTimeout(function () { pdIdDebug("game.ready.delayed_read", { delayMs: delay }); }, delay);
+  });
   pdHideNextButton(q);
 
   var rid = pdGetResponseId();
@@ -238,8 +277,18 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   var pid = pdGetParticipantId(rid);
   var studyId = "${e://Field/pd_study_id}";
   if (pdIsUnresolvedPipedText(studyId)) studyId = "";
+  // Custom HTML input saves through the JavaScript Embedded Data API.
+  // Keep the regular field as a fallback for existing native-input surveys.
+  try {
+    if (typeof Qualtrics.SurveyEngine.getJSEmbeddedData === "function") {
+      var jsStudyId = Qualtrics.SurveyEngine.getJSEmbeddedData("pd_study_id");
+      if (typeof jsStudyId === "string" && jsStudyId.trim()) studyId = jsStudyId;
+    }
+  } catch (e) { pdIdDebug("game.id_read_error", { error: String(e) }); }
   studyId = String(studyId || "").trim();
+  pdIdDebug("game.id_resolved", { selectedStudyId: studyId });
   if (!studyId) {
+    pdIdDebug("game.id_missing.stop");
     pdSetEmbeddedData("pd_loader_status", "missing_study_id");
     var notice = document.createElement("p");
     notice.setAttribute("role", "alert");
@@ -252,6 +301,7 @@ Qualtrics.SurveyEngine.addOnReady(function () {
     responseId: rid,
     participantId: pid || "",
   };
+  pdIdDebug("game.window_assigned");
   pdSetEmbeddedData("pd_player_id_from_qjs", pid || "");
 
   try {
@@ -266,6 +316,8 @@ Qualtrics.SurveyEngine.addOnReady(function () {
 });
 
 Qualtrics.SurveyEngine.addOnUnload(function () {
+  pdIdDebug("game.unload");
+  (window.__PD_ID_DEBUG_TIMERS__ || []).forEach(clearTimeout);
   try {
     pdSaveRuntimeSnapshot("unload");
     if (typeof window.__PD_SOFT_PAUSE__ === "function") {

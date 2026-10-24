@@ -16,6 +16,25 @@ import {
 import { createRtc } from "./rtc.js";
 import { startGame } from "./game.js";
 
+function matchIdDebug(stage, extra = null) {
+  let jsId;
+  try {
+    const se = window.Qualtrics?.SurveyEngine;
+    jsId = typeof se?.getJSEmbeddedData === "function"
+      ? { available: true, value: se.getJSEmbeddedData("pd_study_id") ?? null }
+      : { available: false };
+  } catch (error) { jsId = { error: String(error) }; }
+  console.log("[PD-ID] " + JSON.stringify({
+    stage, at: new Date().toISOString(), version: "match-id-debug-v1",
+    moduleUrl: import.meta.url, readyState: document.readyState,
+    qjsVersion: window.PD_QJS_VERSION || null,
+    hasPDWindow: !!window.__PD__, studyId: window.__PD__?.studyId ?? null,
+    responseId: window.__PD__?.responseId ?? null,
+    jsId, autoStartDisabled: !!window.__PD_DISABLE_AUTO_START__, extra,
+  }));
+}
+matchIdDebug("match.module_evaluated");
+
 
 let matching = false;       // 二重起動防止
 let matchTimer = null;      // setInterval のハンドル
@@ -206,10 +225,14 @@ window.__PD_BEGIN_REMATCH_WAIT__ = async () => {
 };
 
 export async function enterFlow(APP_ID, useToken = true) {
+  matchIdDebug("match.enter_flow", { alreadyMatching: matching });
   console.log("[MATCH] enterFlow called with APP_ID=", APP_ID);
   if (matching) return;
   const studyId = String(window.__PD__?.studyId || "").trim();
-  if (!studyId) throw new Error("参加者IDがありません。ID入力ページから参加してください。");
+  if (!studyId) {
+    matchIdDebug("match.id_missing.stop");
+    throw new Error("参加者IDがありません。ID入力ページから参加してください。");
+  }
   matching = true;
 
   const rtc = createRtc(APP_ID);
@@ -232,6 +255,7 @@ export async function enterFlow(APP_ID, useToken = true) {
   }
 
   // 1) /join
+  matchIdDebug("match.join.before", { studyId, participantId: ctx.participantId });
   let reg = await joinQueue({
     studyId,
     participantId: ctx.participantId,
@@ -252,6 +276,7 @@ export async function enterFlow(APP_ID, useToken = true) {
     });
   }
 
+  matchIdDebug("match.join.after", { status: reg?.status || null, error: reg?.error || null });
   if (reg?.error) {
     throw new Error(reg.error);
   }
@@ -385,6 +410,7 @@ const appIdFromWindow =
 if (typeof window !== "undefined" && !window.__PD_DISABLE_AUTO_START__) {
   console.log("[MATCH] auto-start enterFlow with", appIdFromWindow);
   enterFlow(appIdFromWindow).catch((error) => {
+    matchIdDebug("match.error", { message: error.message });
     matching = false;
     console.error("[MATCH]", error);
     const messages = {

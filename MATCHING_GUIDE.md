@@ -15,12 +15,12 @@
 
 ## Qualtricsの設定
 
-1. ゲームより前に参加者IDのテキスト入力設問を作成し、必須回答にします。
-2. ID入力ブロックとゲームブロックを分けます。
-3. Survey FlowでID入力ブロックの後、ゲームブロックの前にEmbedded Dataを追加します。
-4. 名前を `pd_study_id` とし、値はPiped TextメニューからID入力設問の回答を選びます。
-5. ゲーム設問のJavaScriptを `Qualtrics/current/Q.js` に置き換えます。HTML・CSSは従来のものを使用します。
-6. サーバーと静的サイトの変更を両方反映してください。
+1. ゲームより前に、別ブロックでText / Graphic（説明文）設問を作成します。
+2. 設問文のHTMLへ `Qualtrics/participant-id/Q.html`、JavaScriptへ同フォルダの `Q.js` を貼り付けます。入力欄とCSSはHTML内にあります。
+3. Survey Flowで入力ブロックの前に `__js_pd_study_id` を空欄で定義します。
+4. 入力ブロックの後で `pd_study_id` に `${e://Field/__js_pd_study_id}` を設定します。以前の標準入力設問への参照は置き換えます。
+5. ゲーム設問のJavaScriptを `Qualtrics/current/Q.js` の最新版に置き換えます。ゲームのHTML・CSSは従来のものを使用します。
+6. 詳しい配置は `Qualtrics/participant-id/README.md` を参照してください。サーバー・静的サイト側のマッチング変更も反映済みであることを確認します。
 
 参加者へ毎回同じIDを通知してください。名簿との照合・本人認証は含みません。
 
