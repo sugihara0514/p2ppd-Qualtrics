@@ -391,7 +391,6 @@ if (typeof window !== "undefined" && !window.__PD_DISABLE_AUTO_START__) {
       invalid_study_id: "参加者IDを確認してください。",
       study_id_mismatch: "保存された接続と参加者IDが一致しません。研究担当者にお知らせください。",
       study_id_already_active: "この参加者IDは参加中です。元の画面で復帰してください。",
-      already_matched_this_session: "今回はすでにマッチング済みです。研究担当者にお知らせください。",
       resume_token_required: "復帰情報を確認できません。元の画面を使用するか、研究担当者にお知らせください。",
     };
     const status = document.getElementById("gameStatus") || document.getElementById("pd-app") || document.body;

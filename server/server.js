@@ -2,8 +2,6 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { MatchHistory, normalizeStudyId } from "./match-history.js";
 import { v4 as uuid } from "uuid";
 import pkg from "agora-access-token";
@@ -27,8 +25,6 @@ const corsOptions = {
 dotenv.config();
 const matchHistory = new MatchHistory({
   historyFile: process.env.MATCH_HISTORY_FILE || null,
-  journalFile: process.env.MATCH_JOURNAL_FILE || path.join(path.dirname(fileURLToPath(import.meta.url)), 'data', 'matches.jsonl'),
-  sessionId: process.env.EXPERIMENT_SESSION_ID,
 });
 const app = express();
 app.use(cors(corsOptions));
@@ -534,8 +530,6 @@ function buildMatchResponse(p) {
 
 function pairParticipants(a, b) {
   const channel = `room-${uuid()}`;
-  // Synchronous durable reservation, before publishing the room. Single process only.
-  matchHistory.record(a.studyId, b.studyId, channel);
   removeFromQueue(a.participantId);
   removeFromQueue(b.participantId);
   rooms.set(channel, {
@@ -642,9 +636,6 @@ app.post("/join", (req, res) => {
       other.participantId !== participantId && !other.finalLeft &&
       (other.channel || queue.includes(other.participantId)))) {
     return res.status(409).json({ error: "study_id_already_active" });
-  }
-  if (matchHistory.usedThisSession(studyId)) {
-    return res.status(409).json({ error: "already_matched_this_session" });
   }
 
   // 既存の active session があるのに token なし/不一致なら拒否

@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 
 export function normalizeStudyId(value) {
   if (typeof value !== 'string' || !value.trim() || /[\r\n\x00-\x1f]/.test(value)) {
@@ -36,12 +35,8 @@ export function parseCsv(text) {
 
 const key = (a, b) => JSON.stringify([a, b].sort());
 export class MatchHistory {
-  constructor({ historyFile, journalFile, sessionId }) {
-    if (!sessionId?.trim()) throw new Error('EXPERIMENT_SESSION_ID is required (e.g. day01)');
-    this.sessionId = sessionId;
-    this.journalFile = journalFile;
+  constructor({ historyFile } = {}) {
     this.pairs = new Set();
-    this.records = [];
     if (historyFile) {
       const rows = parseCsv(fs.readFileSync(historyFile, 'utf8'));
       const header = rows.shift();
@@ -55,39 +50,6 @@ export class MatchHistory {
         this.pairs.add(key(left, right));
       }
     }
-    fs.mkdirSync(path.dirname(journalFile), { recursive: true });
-    if (fs.existsSync(journalFile)) {
-      for (const line of fs.readFileSync(journalFile, 'utf8').split('\n').filter(Boolean)) {
-        const record = JSON.parse(line);
-        const a = normalizeStudyId(record.participant_id_1), b = normalizeStudyId(record.participant_id_2);
-        if (a === b || !record.channel || !record.session_id || !record.matched_at) throw new Error('invalid_match_journal');
-        this.pairs.add(key(a, b));
-        this.records.push(record);
-      }
-    }
-    // Fail startup if the journal cannot be opened for durable writes.
-    fs.closeSync(fs.openSync(journalFile, 'a'));
   }
   has(a, b) { return a === b || this.pairs.has(key(a, b)); }
-  usedThisSession(id) {
-    return this.records.some(r => r.session_id === this.sessionId &&
-      (r.participant_id_1 === id || r.participant_id_2 === id));
-  }
-  record(a, b, channel) {
-    if (this.has(a, b)) throw new Error('pair_already_matched');
-    const record = { participant_id_1: a, participant_id_2: b, channel,
-      session_id: this.sessionId, matched_at: new Date().toISOString() };
-    const fd = fs.openSync(this.journalFile, 'a');
-    try { fs.writeFileSync(fd, JSON.stringify(record) + '\n'); fs.fsyncSync(fd); }
-    finally { fs.closeSync(fd); }
-    this.records.push(record);
-    this.pairs.add(key(a, b));
-    return record;
-  }
-}
-
-export function recordsToCsv(records) {
-  const columns = ['participant_id_1', 'participant_id_2', 'session_id', 'channel', 'matched_at'];
-  const quote = value => '"' + String(value).replaceAll('"', '""') + '"';
-  return '\uFEFF' + columns.join(',') + '\r\n' + records.map(r => columns.map(c => quote(r[c])).join(',')).join('\r\n') + '\r\n';
 }
