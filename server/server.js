@@ -617,7 +617,11 @@ app.post("/join", (req, res) => {
   const participantId = String(req.body?.participantId || "");
   const resumeToken = String(req.body?.resumeToken || "");
   let studyId;
-  try { studyId = normalizeStudyId(req.body?.studyId); }
+  try {
+    const rawStudyId = req.body?.studyId;
+    const missingStudyId = rawStudyId == null || (typeof rawStudyId === "string" && !rawStudyId.trim());
+    studyId = missingStudyId && !matchHistory.enabled ? "" : normalizeStudyId(rawStudyId);
+  }
   catch { return res.status(400).json({ error: "invalid_study_id" }); }
   if (!participantId) {
     return res.status(400).json({ error: "participantId required" });
@@ -632,7 +636,7 @@ app.post("/join", (req, res) => {
     return res.json(enqueueOrPair(p));
   }
 
-  if ([...participants.values()].some(other => other.studyId === studyId &&
+  if (studyId && [...participants.values()].some(other => other.studyId === studyId &&
       other.participantId !== participantId && !other.finalLeft &&
       (other.channel || queue.includes(other.participantId)))) {
     return res.status(409).json({ error: "study_id_already_active" });

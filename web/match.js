@@ -229,10 +229,6 @@ export async function enterFlow(APP_ID, useToken = true) {
   console.log("[MATCH] enterFlow called with APP_ID=", APP_ID);
   if (matching) return;
   const studyId = String(window.__PD__?.studyId || "").trim();
-  if (!studyId) {
-    matchIdDebug("match.id_missing.stop");
-    throw new Error("参加者IDがありません。ID入力ページから参加してください。");
-  }
   matching = true;
 
   const rtc = createRtc(APP_ID);
@@ -241,7 +237,7 @@ export async function enterFlow(APP_ID, useToken = true) {
   let ctx = readMatchCtx();
   // A different survey response or person must not reuse another session's token.
   const currentParticipantId = getParticipantId();
-  if (ctx && (ctx.studyId !== studyId || ctx.participantId !== currentParticipantId)) {
+  if (ctx && ((ctx.studyId || "") !== studyId || ctx.participantId !== currentParticipantId)) {
     clearMatchCtx();
     ctx = null;
   }

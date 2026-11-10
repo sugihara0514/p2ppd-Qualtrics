@@ -36,6 +36,7 @@ export function parseCsv(text) {
 const key = (a, b) => JSON.stringify([a, b].sort());
 export class MatchHistory {
   constructor({ historyFile } = {}) {
+    this.enabled = !!historyFile;
     this.pairs = new Set();
     if (historyFile) {
       const rows = parseCsv(fs.readFileSync(historyFile, 'utf8'));
@@ -51,5 +52,9 @@ export class MatchHistory {
       }
     }
   }
-  has(a, b) { return a === b || this.pairs.has(key(a, b)); }
+  has(a, b) {
+    // Missing study IDs are distinct survey sessions, not the same person.
+    if (!a || !b) return false;
+    return a === b || this.pairs.has(key(a, b));
+  }
 }

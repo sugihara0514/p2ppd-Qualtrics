@@ -20,6 +20,8 @@ test('no history requires no session and creates no files', t => {
   const { options, dir } = setup(t);
   const h = new MatchHistory(options);
   assert.equal(h.has('001', '002'), false);
+  assert.equal(h.enabled, false);
+  assert.equal(h.has('', ''), false);
   assert.equal(h.has('001', '001'), true);
   assert.equal(new MatchHistory().has('001', '002'), false);
   assert.deepEqual(fs.readdirSync(dir), []);
@@ -28,10 +30,42 @@ test('read-only CSV, reverse pair, leading zeros and quoted IDs', t => {
   const csv = '\uFEFFparticipant_id_1,participant_id_2\r\n001,"A,""B"\r\n';
   const { options } = setup(t, csv);
   const h = new MatchHistory(options);
+  assert.equal(h.enabled, true);
   assert.equal(h.has('A,"B', '001'), true);
   assert.equal(h.has('A,"B', '1'), false);
   assert.equal(h.has('003', '004'), false);
   assert.equal(fs.readFileSync(options.historyFile, 'utf8'), csv);
+});
+
+test('server: no CSV permits absent IDs, pairs separate sessions and resumes; CSV requires IDs', () => {
+  function server(history) {
+    const routes = new Map(); let sequence = 0;
+    const source = fs.readFileSync(new URL('./server.js', import.meta.url), 'utf8');
+    vm.runInNewContext(source.slice(source.indexOf('const WAIT_TTL_MS'), source.indexOf('app.post("/heartbeat"')), {
+      matchHistory: history, normalizeStudyId, uuid: () => String(++sequence), Date, console,
+      app: { post: (url, fn) => routes.set(url, fn), get: (url, fn) => routes.set(url, fn) },
+    });
+    return (route, body) => {
+      let code = 200; let result;
+      const res = { status(n) { code = n; return this; }, json(data) { result = data; return this; } };
+      routes.get(route)({ body, query: body }, res);
+      return { code, ...result };
+    };
+  }
+  const request = server(new MatchHistory());
+  const a = request('/join', { participantId: 'response-no-id-a' });
+  assert.equal(a.status, 'waiting');
+  const b = request('/join', { participantId: 'response-no-id-b', studyId: '   ' });
+  assert.equal(b.status, 'paired');
+  const resume = request('/join', { participantId: a.participantId, resumeToken: a.resumeToken });
+  assert.equal(resume.channel, b.channel);
+  assert.equal(request('/match', { participantId: a.participantId, resumeToken: a.resumeToken }).channel, b.channel);
+  assert.equal(request('/join', { participantId: 'response-no-id-c', studyId: '' }).status, 'waiting');
+  assert.equal(request('/join', { participantId: 'response-no-id-d', studyId: null }).status, 'paired');
+  assert.equal(request('/join', { participantId: 'bad-id', studyId: 123 }).code, 400);
+  const required = server({ enabled: true, has: () => false });
+  assert.equal(required('/join', { participantId: 'missing' }).error, 'invalid_study_id');
+  assert.equal(required('/join', { participantId: 'empty', studyId: '' }).code, 400);
 });
 test('missing file, corrupt data and blank IDs fail closed', t => {
   const { options } = setup(t, 'participant_id_1,participant_id_2\nA,A\n');

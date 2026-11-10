@@ -54,7 +54,7 @@ test('restore and page-submit save, legacy API fallback, save failure', () => {
 });
 test('game reads JS embedded ID before legacy field, and supports legacy-only surveys', () => {
   const game = fs.readFileSync(__dirname + '/../current/Q.js', 'utf8');
-  const snippet = game.slice(game.indexOf('  var studyId = '), game.indexOf('  if (!studyId) {'));
+  const snippet = game.slice(game.indexOf('  var studyId = '), game.indexOf('  window.__PD__ = {'));
   function read(value) {
     const context = { Qualtrics: { SurveyEngine: { getJSEmbeddedData: () => value } }, pdIdDebug() {}, pdIsUnresolvedPipedText: v => v.startsWith('${') };
     vm.runInNewContext(snippet, context);
@@ -65,4 +65,23 @@ test('game reads JS embedded ID before legacy field, and supports legacy-only su
   const context = { Qualtrics: { SurveyEngine: {} }, pdIdDebug() {}, pdIsUnresolvedPipedText: () => false };
   vm.runInNewContext(snippet.replace('${e://Field/pd_study_id}', 'LEGACY001'), context);
   assert.equal(context.studyId, 'LEGACY001');
+});
+
+test('game ready starts script loading with no study ID or ID input block', () => {
+  const game = fs.readFileSync(__dirname + '/../current/Q.js', 'utf8');
+  const ready = game.slice(game.indexOf('Qualtrics.SurveyEngine.addOnReady(function () {'), game.indexOf('Qualtrics.SurveyEngine.addOnUnload(function () {'));
+  let callback; let loads = 0;
+  const context = {
+    window: {},
+    Qualtrics: { SurveyEngine: { addOnReady(fn) { callback = fn; } } },
+    pdIdDebug() {}, pdHideNextButton() {}, pdSetEmbeddedData() {},
+    pdGetResponseId: () => 'R_no_study_id', pdGetParticipantId: () => 'R_no_study_id',
+    pdIsUnresolvedPipedText: v => v.startsWith('${'),
+    pdLoadGameScripts() { loads++; }, setTimeout() { return 1; },
+  };
+  vm.runInNewContext(ready, context);
+  callback.call({});
+  assert.equal(context.window.__PD__.studyId, '');
+  assert.equal(context.window.__PD__.participantId, 'R_no_study_id');
+  assert.equal(loads, 1);
 });
