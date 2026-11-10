@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { MatchHistory, normalizeStudyId } from "./match-history.js";
+import { recordingPrefix } from "./recording-path.js";
 import { v4 as uuid } from "uuid";
 import pkg from "agora-access-token";
 const { RtcTokenBuilder, RtcRole } = pkg;
@@ -61,13 +62,6 @@ function agoraAuthHeader() {
   return `Basic ${base}`;
 }
 
-// channel を fileNamePrefix 用に安全な形（英数字のみ）にする
-function safePrefixSegment(channel) {
-  const cleaned = String(channel).replace(/[^a-zA-Z0-9]/g, "");
-  // もし全部消えて空になったら保険で "room" にする
-  return cleaned || "room";
-}
-
 // 保存先ストレージ設定（Supabase Storage を S3互換で使う想定）
 function buildStorageConfig(channel) {
   const vendor = Number(process.env.AGORA_STORAGE_VENDOR || 11); // 11 = S3互換
@@ -77,16 +71,15 @@ function buildStorageConfig(channel) {
   const secretKey = process.env.AGORA_STORAGE_SECRET_KEY;
   const endpoint  = process.env.AGORA_STORAGE_ENDPOINT; // Supabase の S3 endpoint
 
-  const safeSegment = safePrefixSegment(channel);
-  
   const cfg = {
     vendor,
     region,
     bucket,
     accessKey,
     secretKey,
-    // バケット内のパス: pd/<channel>/...
-    fileNamePrefix: ["test1005", safeSegment], //supabaseのpdフォルダに録画を保存
+    // バケット直下: 日本時間の録画開始日(YYYYMMDD)/対戦部屋/...
+    // このstartリクエストで指定した保存先は、日付をまたいでも変わらない。
+    fileNamePrefix: recordingPrefix(channel),
   };
   if (endpoint) {
     cfg.extensionParams = { endpoint };

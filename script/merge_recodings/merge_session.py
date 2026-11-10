@@ -11,7 +11,7 @@ load_dotenv()
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]  # サーバ用キー推奨
 BUCKET = "p2ppd-movie"          # 実際のバケット名に合わせる
-ROOT_PREFIX = "test1203"         # 今の fileNamePrefix[0]
+ROOT_PREFIX = os.environ["RECORDING_PREFIX"]  # 日本時間の日付（例: 20261110）。旧フォルダ名も指定可能。
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
