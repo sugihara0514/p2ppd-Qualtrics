@@ -1295,7 +1295,7 @@ export function startGame(channel, rtc, opts = {}) {
                 force: true,
               });
             } else {
-              setStatus(`ゲーム終了！\nあなたの本番ラウンドの報酬は ${finalTotal}円 です。\n「→」ボタンで次へ進んでください。`, {
+              setStatus(`ゲーム終了！\nあなたの本番ラウンドの報酬は ${finalTotal}ポイント です。\n「→」ボタンで次へ進んでください。`, {
                 typewriter: false,
                 force: true,
               });
