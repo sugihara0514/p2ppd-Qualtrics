@@ -777,12 +777,10 @@ const PAYOFF = {
   DD: [0, 0],       // Steal / Steal
 };
 
-function getRoundPayoff(round, key) {
-  // 1,2ラウンド目は練習
-  if (round < MAX_ROUNDS) return [0, 0];
+const PRACTICE_PAYOFF = { CC: [2, 2], CD: [0, 3], DC: [3, 0], DD: [1, 1] };
 
-  // 3ラウンド目のみ本番
-  return PAYOFF[key] || [0, 0];
+function getRoundPayoff(round, key) {
+  return (round < MAX_ROUNDS ? PRACTICE_PAYOFF : PAYOFF)[key] || [0, 0];
 }
 
 const games = new Map();
@@ -854,6 +852,7 @@ function createGameState() {
     choiceLedger: new Map(),
     emotionLedger: new Map(),
     totals: new Map(),
+    practiceTotals: new Map(),
     lastResult: null,
     over: false,
   };
@@ -883,6 +882,7 @@ app.post("/game/join", async (req, res) => {
       choiceLedger: new Map(),   // `${round}:${playerId}` -> choice
       emotionLedger: new Map(),  // `${round}:${playerId}` -> emotion payload
       totals: new Map(),
+      practiceTotals: new Map(),
       lastResult: null,
       over: false,
     });
@@ -1027,14 +1027,15 @@ app.post("/game/choice", async (req, res) => {
     // const [pay1, pay2] = PAYOFF[key];
     const [pay1, pay2] = getRoundPayoff(rNow, key);
 
-    g.totals.set(p1, (g.totals.get(p1) || 0) + pay1);
-    g.totals.set(p2, (g.totals.get(p2) || 0) + pay2);
+    const roundTotals = rNow < MAX_ROUNDS ? g.practiceTotals : g.totals;
+    roundTotals.set(p1, (roundTotals.get(p1) || 0) + pay1);
+    roundTotals.set(p2, (roundTotals.get(p2) || 0) + pay2);
 
     g.lastResult = {
       round: rNow,
       choices: { [p1]: c1, [p2]: c2 },
       payoffs: { [p1]: pay1, [p2]: pay2 },
-      totals: Object.fromEntries(g.totals.entries())
+      totals: Object.fromEntries(roundTotals.entries())
     };
 
     const room = rooms.get(channel);

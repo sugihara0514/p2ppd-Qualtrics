@@ -288,6 +288,8 @@ export function startGame(channel, rtc, opts = {}) {
       round_N.textContent = String(currentRound);
     }
     renderMatrixPayoff(currentRound);
+    if (you_total_score?.parentElement) you_total_score.parentElement.style.display = currentRound < MAX_ROUNDS ? "" : "none";
+    if (opp_total_score?.parentElement) opp_total_score.parentElement.style.display = currentRound < MAX_ROUNDS ? "" : "none";
   }
 
   // 追加コメント
@@ -308,12 +310,6 @@ export function startGame(channel, rtc, opts = {}) {
   const you_total_score = document.getElementById("you_total_score");
 
   // 合計得点非表示
-  if (you_total_score?.parentElement) {
-    you_total_score.parentElement.style.display = "none";
-  }
-  if (opp_total_score?.parentElement) {
-    opp_total_score.parentElement.style.display = "none";
-  }
 
   // カメラマイクミュート
   const micToggleBtn = document.getElementById("mic_button");
@@ -380,10 +376,10 @@ export function startGame(channel, rtc, opts = {}) {
   };
 
   const PRACTICE_PAYOFF_DISPLAY = {
-    CC: { you: "1500", opp: "1500" },
-    CD: { you: "0", opp: "3000" },
-    DC: { you: "3000", opp: "0" },
-    DD: { you: "0", opp: "0" },
+    CC: { you: "2", opp: "2" },
+    CD: { you: "0", opp: "3" },
+    DC: { you: "3", opp: "0" },
+    DD: { you: "1", opp: "1" },
   };
   
   const REAL_PAYOFF_DISPLAY = {
