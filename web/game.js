@@ -288,8 +288,6 @@ export function startGame(channel, rtc, opts = {}) {
       round_N.textContent = String(currentRound);
     }
     renderMatrixPayoff(currentRound);
-    if (you_total_score?.parentElement) you_total_score.parentElement.style.display = currentRound < MAX_ROUNDS ? "" : "none";
-    if (opp_total_score?.parentElement) opp_total_score.parentElement.style.display = currentRound < MAX_ROUNDS ? "" : "none";
   }
 
   // 追加コメント
@@ -308,6 +306,12 @@ export function startGame(channel, rtc, opts = {}) {
   // 合計得点表示
   const opp_total_score = document.getElementById("opp_total_score");
   const you_total_score = document.getElementById("you_total_score");
+
+  function renderPracticeTotals(state) {
+    if (!state.practiceTotals) return;
+    if (you_total_score) you_total_score.textContent = String(state.practiceTotals[pid] ?? 0);
+    if (opp_total_score) opp_total_score.textContent = String(state.practiceTotals[state.opponentId] ?? 0);
+  }
 
   // 合計得点非表示
 
@@ -1036,6 +1040,7 @@ export function startGame(channel, rtc, opts = {}) {
   .then(init => {
     currentRound = init.round || 1;
     renderRound();
+    renderPracticeTotals(init);
 
     qSetCurrentRoomSnapshot(init);
     qSet("pd_game_joined", "1");
@@ -1255,6 +1260,8 @@ export function startGame(channel, rtc, opts = {}) {
         const r = await fetch(`${API_BASE}/game/state?channel=${encodeURIComponent(channel)}&playerId=${encodeURIComponent(pid)}`);
         const s = await r.json();
         if (!s.exists) return;
+
+        renderPracticeTotals(s);
 
         qSetCurrentRoomSnapshot(s);
 
@@ -1514,8 +1521,10 @@ export function startGame(channel, rtc, opts = {}) {
             const youTotal = s.lastResult.totals[pid];
             const oppTotal = (oppIdNow && s.lastResult.totals) ? s.lastResult.totals[oppIdNow] : 0;  // 相手の合計
 
-            if (you_total_score) you_total_score.textContent = String(youTotal ?? 0);
-            if (opp_total_score) opp_total_score.textContent = String(oppTotal ?? 0);
+            if (resultRound < MAX_ROUNDS) {
+              if (you_total_score) you_total_score.textContent = String(youTotal ?? 0);
+              if (opp_total_score) opp_total_score.textContent = String(oppTotal ?? 0);
+            }
 
             // 相手の枠を表示（確定後）
             showOppRect(oppChoice);

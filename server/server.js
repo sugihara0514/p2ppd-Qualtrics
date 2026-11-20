@@ -814,6 +814,7 @@ function buildGameSnapshot(channel, playerId) {
     over: g.over,
     stage: g.stage || "choice",
     lastResult: g.lastResult,
+    practiceTotals: Object.fromEntries(g.practiceTotals.entries()),
     myTotal,
     overReason: g.overReason || null,
     leftBy: g.leftBy || null,
